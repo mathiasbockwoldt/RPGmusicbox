@@ -1,0 +1,15 @@
+<rpgbox version="150820">
+	<theme id="bsg" name="Battlestar Galactica" basetime="3600" key="b">
+		<background file="bsg/*.mp3" volume="100" />
+		<effect file="instrumente/*.wav" occurence="100" volume="50" />
+	</theme>
+
+	<theme id="punkles" name="The Punkles" key="p">
+		<background file="punkles/*.mp3" />
+		<effect file="voegel/*.wav" occurence="10" />
+	</theme>
+
+	<globals>
+		<effect file="globals/jeopardy.ogg" name="Jeopardy Theme" id="jeopardy" key="1" volume="100" interrupting="yes" />
+	</globals>
+</rpgbox>
