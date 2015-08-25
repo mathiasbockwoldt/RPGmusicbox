@@ -13,7 +13,6 @@
 # - Colors, background image, etc. depending on theme (as attribute)?
 # - Default starting theme (defined in the xml file)
 # - The screen output could be improved
-#   + Colors to mark the current song, theme, etc.
 #   + Music and Sound filenames could be presented better (e.g. without path and extension, underscores to space). This view might be toggleable by an F-Key
 # - The extra keys like F1, F2, space and Esc could be shown in a kind of footer bar. Here, the status of pause, allowMusic, and allowSounds could be shown
 #
@@ -669,6 +668,21 @@ class Player(object):
 			print(t)
 
 
+	def prettifyPath(self, path):
+		'''
+		Extracts the filename without extension from path and turns underscores to spaces.
+
+		:param path: String with the full path
+		:returns: The prettified filename
+		'''
+
+		path = os.path.basename(path)
+		path = os.path.splitext(path)[0]
+		path = path.replace('_', ' ')
+
+		return path
+
+
 	def updateTextAll(self):
 		self.updateTextGlobalKeys(update = False)
 		self.updateTextThemeKeys(update = False)
@@ -747,17 +761,17 @@ class Player(object):
 			self.showLine(area, '', self.BLACK, self.standardFont)
 
 			if len(songs) == 1:
-				self.showLine(area, '>> ' + songs[0].filename, self.RED, self.standardFont)
+				self.showLine(area, '>> ' + self.prettifyPath(songs[0].filename), self.RED, self.standardFont)
 			elif len(songs) == 2:
 				if songs[0]:
-					self.showLine(area, songs[0].filename, self.RED, self.standardFont)
+					self.showLine(area, self.prettifyPath(songs[0].filename), self.RED, self.standardFont)
 				else:
-					self.showLine(area, '', self.RED, self.standardFont)
-				self.showLine(area, songs[1].filename, self.BLACK, self.standardFont)
+					self.showLine(area, '', self.BLACK, self.standardFont)
+				self.showLine(area, self.prettifyPath(songs[1].filename), self.BLACK, self.standardFont)
 			else:
-				self.showLine(area, songs[0].filename, self.GREY, self.standardFont)
-				self.showLine(area, songs[1].filename, self.RED, self.standardFont)
-				self.showLine(area, songs[2].filename, self.BLACK, self.standardFont)
+				self.showLine(area, self.prettifyPath(songs[0].filename), self.GREY, self.standardFont)
+				self.showLine(area, self.prettifyPath(songs[1].filename), self.RED, self.standardFont)
+				self.showLine(area, self.prettifyPath(songs[2].filename), self.BLACK, self.standardFont)
 
 		if self.activeChannels:
 			toDelete = []
@@ -772,7 +786,7 @@ class Player(object):
 			if self.activeChannels:
 				self.showLine(area, '', self.BLACK, self.standardFont)
 				for c in sorted(self.activeChannels):
-					self.showLine(area, c[0], self.RED, self.standardFont)
+					self.showLine(area, self.prettifyPath(c[0]), self.RED, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
