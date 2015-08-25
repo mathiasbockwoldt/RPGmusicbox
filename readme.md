@@ -75,6 +75,8 @@ Other predefined keys are:
 - right-arrow: next song
 - left-arrow: previous song (up to ten songs back)
 - space: pause or unpause playback
+- F1: Allow or disallow music
+- F2: Allow or disallow sounds
 - escape: quit
 
 

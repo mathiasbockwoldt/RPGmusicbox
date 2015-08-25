@@ -6,15 +6,19 @@
 # Must haves
 # - Global effects must be able to interrupt normal playback
 # - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
+# - Better documentation of the source code. At least a well-describing doc string for every class and method
 #
 # Ideas
 # - Config for individual fonts, colors etc? Could be something like: <config bgcolor="#000000" color="#ff2222" />
 # - Colors, background image, etc. depending on theme (as attribute)?
 # - Default starting theme (defined in the xml file)
 # - The screen output could be improved
+#   + Colors to mark the current song, theme, etc.
+#   + Music and Sound filenames could be presented better (e.g. without path and extension, underscores to space). This view might be toggleable by an F-Key
+# - The extra keys like F1, F2, space and Esc could be shown in a kind of footer bar. Here, the status of pause, allowMusic, and allowSounds could be shown
 #
 # Bugs
-# - no known bugs
+# - Non known
 #
 
 from __future__ import generators, division, with_statement, print_function
@@ -26,7 +30,6 @@ import copy
 import random
 import xml.etree.ElementTree as ET
 from glob import glob
-from pygame.locals import *
 
 
 class NoValidRPGboxError(Exception):
@@ -50,7 +53,7 @@ class Playlist(object):
 		else:
 			self.remember = 0
 
-		self.songs = songs
+		self.songs = songs[:]
 		self.playlist = []
 		self.nowPlaying = -1
 
@@ -67,13 +70,14 @@ class Playlist(object):
 			newSonglist = self.songs[:]
 			random.shuffle(newSonglist)
 
-			# prevent two songs from being played one after another (but don't try it indefinitely long)
-			i = 0
-			while newSonglist[0] == self.playlist[-1]:
-				if i >= 10:
-					break
-				random.shuffle(newSonglist)
-				i += 1
+			if self.playlist:
+				# prevent two songs from being played one after another (but don't try it indefinitely long)
+				i = 0
+				while newSonglist[0] == self.playlist[-1]:
+					if i >= 10:
+						break
+					random.shuffle(newSonglist)
+					i += 1
 
 			self.playlist.extend(newSonglist)
 
@@ -109,7 +113,7 @@ class Playlist(object):
 		if self.nowPlaying >= 0:
 			return self.playlist[self.nowPlaying]
 		else:
-			self.nowPlaying = -1	# In case, previousSong() is called multiple times while in the beginning of the list, the pointer needs to be reset to -1, such that nextSong() starts at 0 again.
+			self.nowPlaying = 0	# In case, previousSong() is called multiple times while in the beginning of the list, the pointer needs to be reset to -1, such that nextSong() starts at 0 again.
 			return None
 
 
@@ -127,11 +131,11 @@ class Playlist(object):
 
 		# If the first song did not yet start to play
 		if self.nowPlaying < 0:
-			return [None, None, self.playlist[0]]	# [None, None, next]
+			return ['', self.playlist[0]]	# ['', next]
 
 		# If the first song plays
 		if self.nowPlaying == 0:
-			return [None] + self.playlist[0:2]	# [None, current, next]
+			return self.playlist[0:2]	# [current, next]
 
 		# Usual playing
 		return self.playlist[self.nowPlaying - 1: self.nowPlaying + 2]	# [prev, current, next]
@@ -149,9 +153,9 @@ class Theme(object):
 		self.key = str(key)[0]
 		self.name = str(name)
 
-		self.songs = songs
-		self.sounds = sounds
-		self.occurences = occurences
+		self.songs = songs[:]
+		self.sounds = sounds[:]
+		self.occurences = occurences[:]
 
 
 	def __str__(self):
@@ -178,11 +182,11 @@ class Theme(object):
 	def addOccurences(self, occurences):
 		self.occurences.extend(occurences)
 
-		if len(self.occurences) != len(self.songs):
-			raise KeyError('The number of songs is not equal to the number of occurences in {}!'.format(self.name))
+		if len(self.occurences) != len(self.sounds):
+			raise KeyError('The number of sounds is not equal to the number of occurences in {}!'.format(self.name))
 
-		for i in range(len(self.songs)):
-			self.songs[i].occurence = self.occurences[i]
+		for i in range(len(self.sounds)):
+			self.sounds[i].occurence = self.occurences[i]
 
 
 	# CLASS Theme END
@@ -200,7 +204,7 @@ class Sound(object):
 
 
 	def __str__(self):
-		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', self.occurence, ')'))
+		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', '{:.4f}'.format(self.occurence), ')'))
 
 
 	# CLASS Sound END
@@ -298,7 +302,7 @@ class RPGbox(object):
 			for effect in globalTag.iter('effect'):
 				# Get name of the global effect (each global effect must have a name!)
 				try:
-					effectID = effect.attrib['name']
+					effectName = effect.attrib['name']
 				except KeyError:
 					raise NoValidRPGboxError('A global effect without name was found. Each global effect must have a name!')
 
@@ -316,7 +320,7 @@ class RPGbox(object):
 				# Get the effect file from the tag attribute
 				try:
 					effectFile = effect.attrib['file']
-					if os.path.isfile(effectFile):
+					if not os.path.isfile(effectFile):
 						effectFile = None
 				except KeyError:
 					raise NoValidRPGboxError('No file given in global effect.')
@@ -346,7 +350,7 @@ class RPGbox(object):
 			except KeyError:
 				raise NoValidRPGboxError('A theme without key was found. Each theme must have a unique keyboard key!')
 
-			if themeID in self.themes or themeID in self.globalKeys:
+			if themeID in self.themes or themeID in self.globalEffects:
 				raise NoValidRPGboxError('The key {} is already in use. Found in {}'.format(themeKey, themeID))
 			self._ensureValidID(themeID)	# Ensure that the id is valid
 
@@ -542,7 +546,7 @@ class Player(object):
 
 	WHITE = (255, 255, 255)
 	BLACK = (0, 0, 0)
-	RED = (127, 0, 0)
+	RED = (200, 0, 0)
 	GREY = (127, 127, 127)
 
 	def __init__(self, box, debug = True):
@@ -593,7 +597,7 @@ class Player(object):
 		self.activeSounds = []
 		self.activeGlobalEffect = None
 		self.occurences = []
-		self.playlist = None
+		self.playlist = Playlist([])
 		self.activeTheme = None
 		self.activeThemeID = self.box.getDefaultThemeID()
 		if self.activeThemeID:
@@ -601,6 +605,8 @@ class Player(object):
 
 		self.cycle = 0
 		self.paused = False
+		self.allowMusic = True
+		self.allowSounds = True
 		self.newSongWhilePause = False
 		self.activeChannels = []
 
@@ -608,8 +614,9 @@ class Player(object):
 		self.updateTextAll()
 
 
-	def _togglePause(self):
+	def togglePause(self):
 		''' Pause or unpause music and sounds, depending on the self.paused variable. '''
+
 		if self.paused:
 			pygame.mixer.music.unpause()
 			pygame.mixer.unpause()
@@ -623,6 +630,36 @@ class Player(object):
 			pygame.mixer.pause()
 			self.debugPrint('Player paused')
 			self.paused = True
+
+
+	def toggleAllowMusic(self):
+		''' Allow or disallow music to be played '''
+
+		if self.allowMusic:
+			self.allowMusic = False
+			pygame.mixer.music.stop()
+			self.playlist.previousSong()	# Necessary to start with the same song, when music is allowed again
+			self.updateTextNowPlaying()
+			self.debugPrint('Music switched off')
+		else:
+			self.allowMusic = True
+			pygame.event.post(pygame.event.Event(self.SONG_END))
+			self.debugPrint('Music switched on')
+
+
+	def toggleAllowSounds(self):
+		''' Allow or disallow sounds to be played '''
+
+		if self.allowSounds:
+			self.allowSounds = False
+			if self.activeChannels:
+				for c in self.activeChannels:
+					c[1].stop()
+			self.updateTextNowPlaying()
+			self.debugPrint('Sound switched off')
+		else:
+			self.allowSounds = True
+			self.debugPrint('Sound switched on')
 
 
 	def debugPrint(self, t):
@@ -644,6 +681,7 @@ class Player(object):
 		textRect = font.render(t, True, color)
 		self.background.blit(textRect, area)
 		area.top += font.get_linesize()
+
 
 	def updateTextGlobalKeys(self, update = True):
 		self.textGlobalKeys.fill(self.WHITE)
@@ -670,21 +708,22 @@ class Player(object):
 
 
 	def updateTextThemeKeys(self, update = True):
-		text = ['Available themes', '']
-		for k in sorted(self.themes.keys()):
-			text.append(''.join((chr(k), ' - ', self.themes[k].name)))
+		self.textThemeKeys.fill(self.WHITE)
+		r = self.background.blit(self.textThemeKeys, (self.w, 0))
 
 		area = self.textThemeKeys.get_rect()
 		area.left = self.w + 5
 		area.top = 5
 
-		self.textThemeKeys.fill(self.WHITE)
-		r = self.background.blit(self.textThemeKeys, (self.w, 0))
+		self.showLine(area, 'Themes', self.BLACK, self.headerFont)
+		self.showLine(area, '', self.BLACK, self.standardFont)
 
-		for t in text:
-			textRect = self.standardFont.render(t, True, self.BLACK)
-			self.background.blit(textRect, area)
-			area.top += self.standardFont.get_linesize()
+		for k in sorted(self.box.themes.keys()):
+			t = ''.join((chr(k), ' - ', self.box.themes[k].name))
+			if k == self.activeThemeID:
+				self.showLine(area, t, self.RED, self.standardFont)
+			else:
+				self.showLine(area, t, self.BLACK, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -693,42 +732,47 @@ class Player(object):
 
 
 	def updateTextNowPlaying(self, update = True):
-		text = ['Now Playing', '']
-
-		if self.playlist is not None:
-			songs = self.playlist.getSongsForViewing()
-			for song in songs:
-				if song is not None:
-					text.append(song.filename)
-			text.append('')
-
-		if self.activeChannels:
-			toDelete = []
-			toList = []
-			for i in range(len(self.activeChannels)):
-				if self.activeChannels[i][1].get_busy():
-					toList.append(self.activeChannels[i][0])
-				else:
-					toDelete.append(i)
-
-			for i in toDelete[::-1]:
-				del(self.activeChannels[i])
-
-			if toList:
-				text.append('')
-				text.extend(sorted(toList))
+		self.textNowPlaying.fill(self.WHITE)
+		r = self.background.blit(self.textNowPlaying, (2 * self.w, 0))
 
 		area = self.textNowPlaying.get_rect()
 		area.left = 2 * self.w + 5
 		area.top = 5
 
-		self.textNowPlaying.fill(self.WHITE)
-		r = self.background.blit(self.textNowPlaying, (2 * self.w, 0))
+		self.showLine(area, 'Now Playing', self.BLACK, self.headerFont)
 
-		for t in text:
-			textRect = self.standardFont.render(t, True, self.BLACK)
-			self.background.blit(textRect, area)
-			area.top += self.standardFont.get_linesize()
+		songs = self.playlist.getSongsForViewing()
+
+		if songs is not None:
+			self.showLine(area, '', self.BLACK, self.standardFont)
+
+			if len(songs) == 1:
+				self.showLine(area, '>> ' + songs[0].filename, self.RED, self.standardFont)
+			elif len(songs) == 2:
+				if songs[0]:
+					self.showLine(area, songs[0].filename, self.RED, self.standardFont)
+				else:
+					self.showLine(area, '', self.RED, self.standardFont)
+				self.showLine(area, songs[1].filename, self.BLACK, self.standardFont)
+			else:
+				self.showLine(area, songs[0].filename, self.GREY, self.standardFont)
+				self.showLine(area, songs[1].filename, self.RED, self.standardFont)
+				self.showLine(area, songs[2].filename, self.BLACK, self.standardFont)
+
+		if self.activeChannels:
+			toDelete = []
+			for i in range(len(self.activeChannels)):
+				if not self.activeChannels[i][1].get_busy():
+					toDelete.append(i)
+
+			for i in toDelete[::-1]:
+				del(self.activeChannels[i])
+
+			# all members may have been deleted, that's why here is a new `if`
+			if self.activeChannels:
+				self.showLine(area, '', self.BLACK, self.standardFont)
+				for c in sorted(self.activeChannels):
+					self.showLine(area, c[0], self.RED, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -739,8 +783,12 @@ class Player(object):
 	def playMusic(self, previous = False):
 		##### If only one song is available, it can easily be run in a loop by saying `play(-1)`
 
+		if not self.allowMusic:
+			self.updateTextNowPlaying()
+			return
+
 		if previous:
-			nextSong = self.playlist.previoussong()
+			nextSong = self.playlist.previousSong()
 		else:
 			nextSong = self.playlist.nextSong()
 
@@ -754,7 +802,7 @@ class Player(object):
 				pygame.mixer.music.play()
 			self.updateTextNowPlaying()
 		else:
-			if not previous:
+			if not previous and self.activeTheme is not None:
 				self.debugPrint('No music available in theme {}'.format(self.activeTheme.name))
 
 
@@ -762,7 +810,7 @@ class Player(object):
 		if self.globalChannel.get_busy():
 			self.debugPrint('Reserved channel is busy! Effect key: {}'.format(chr(effectID)))
 
-		self.activeGlobalChannel = effectID
+		self.activeGlobalEffect = effectID
 		self.globalChannel.play(self.globalEffects[effectID].obj)
 
 		self.updateTextGlobalKeys()
@@ -772,11 +820,16 @@ class Player(object):
 
 
 	def stopGlobalEffect(self):
-		self.activeGlobalChannel = None
+		self.activeGlobalEffect = None
 		self.globalChannel.stop()
+		self.updateTextGlobalKeys()
 
 
 	def playSound(self):
+		if not self.allowSounds:
+			self.updateTextNowPlaying()
+			return
+
 		if not self.paused and self.activeSounds and pygame.mixer.find_channel() is not None:
 			rand = random.random()
 			if rand < self.occurences[-1]:
@@ -825,7 +878,7 @@ class Player(object):
 
 		# remove clutter from the event queue
 		pygame.event.set_allowed(None)
-		pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.SONG_END])
+		pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, self.SONG_END])
 
 		# Start main loop
 		while True:
@@ -836,29 +889,37 @@ class Player(object):
 			for event in pygame.event.get():
 
 				# The program was quit (e.g. by clicking the X-button in the window title) -> quit and return
-				if event.type == QUIT:
+				if event.type == pygame.QUIT:
 					pygame.quit()
 					return
 
 				# At least one key was pressed
-				if event.type == KEYDOWN:
+				if event.type == pygame.KEYDOWN:
 
 					# The Escape key was pressed -> quit and return
-					if event.key == K_ESCAPE:
+					if event.key == pygame.K_ESCAPE:
 						pygame.quit()
 						return
 
 					# The space key was pressed -> (un)pause everything
-					elif event.key == K_SPACE:
-						self._togglePause()
+					elif event.key == pygame.K_SPACE:
+						self.togglePause()
 
 					# The "->" key was pressed -> next song
-					elif event.key == K_RIGHT:
+					elif event.key == pygame.K_RIGHT:
 						self.playMusic()
 
 					# The "<-" key was pressed -> previous song
-					elif event.key == K_LEFT:
+					elif event.key == pygame.K_LEFT:
 						self.playMusic(previous = True)
+
+					# The F1 key was pressed -> (dis)allow Music
+					elif event.key == pygame.K_F1:
+						self.toggleAllowMusic()
+
+					# The F2 key was pressed -> (dis)allow Sounds
+					elif event.key == pygame.K_F2:
+						self.toggleAllowSounds()
 
 					# The key is the key of the active theme -> do nothing
 					elif event.key == self.activeThemeID:
@@ -875,10 +936,6 @@ class Player(object):
 					# The key is one of the global keys -> trigger effect
 					elif event.key in self.globalIDs:
 						self.playGlobalEffect(event.key)
-
-					# The key is the space key -> pause or unpause the player
-					elif event.key == K_SPACE:
-						self._togglePause()
 
 				# The last song is finished (or a new theme was loaded) -> start new song, if available
 				if event.type == self.SONG_END:
