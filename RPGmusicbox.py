@@ -4,15 +4,12 @@
 # # # #  To do  # # # #
 #
 # Structural stuff
-# - Shall themes, music, sounds have their own classes? I think so!
-# - The theme id is currently not needed for anything (key has to be unique anyway). Should it be dropped?
 # - I have to think about / test, if I should preload *all* sounds in the beginning or (as it is now) preload only the active theme sounds.
 # - Ignore unnecessary inputs, like mouse input?
 #
 # Must haves
 # - Global effects like Jeopardy music; with option to be interrupting (pausing all other music/sounds while playing) or non-interrupting (overlaying like a sound effect)
 #   + These sounds must be stoppable, e.g. by pressing the same key again
-# - Allow to select the previous song by pressing "<-"
 # - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
 #
 # Ideas
@@ -22,7 +19,7 @@
 # - The screen output could be improved
 #
 # Bugs
-# - The playlist management must be improved. A new list must be generated earlier, such that there are always n new songs in the list. The playlist could be a class with a generator...
+# - no known bugs
 #
 
 from __future__ import generators, division, with_statement, print_function
