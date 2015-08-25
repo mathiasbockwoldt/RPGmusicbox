@@ -3,13 +3,8 @@
 
 # # # #  To do  # # # #
 #
-# Structural stuff
-# - I have to think about / test, if I should preload *all* sounds in the beginning or (as it is now) preload only the active theme sounds.
-# - Ignore unnecessary inputs, like mouse input?
-#
 # Must haves
-# - Global effects like Jeopardy music; with option to be interrupting (pausing all other music/sounds while playing) or non-interrupting (overlaying like a sound effect)
-#   + These sounds must be stoppable, e.g. by pressing the same key again
+# - Global effects must be able to interrupt normal playback
 # - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
 #
 # Ideas
@@ -26,7 +21,7 @@ from __future__ import generators, division, with_statement, print_function
 
 import pygame
 import sys
-#import os.path
+import os.path
 import copy
 import random
 import xml.etree.ElementTree as ET
@@ -161,7 +156,7 @@ class Theme(object):
 
 	def __str__(self):
 		ret = []
-		ret.append(self.key + ': ' + self.name)
+		ret.append(''.join((self.key, ') ', self.name)))
 		ret.append('Songs:')
 		for s in self.songs:
 			ret.append('    ' + str(s))
@@ -205,7 +200,7 @@ class Sound(object):
 
 
 	def __str__(self):
-		return self.filename + ' (vol: ' + str(self.volume) + ', occ: ' + self.occurence + ')'
+		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', self.occurence, ')'))
 
 
 	# CLASS Sound END
@@ -222,10 +217,35 @@ class Song(object):
 
 
 	def __str__(self):
-		return self.filename + ' (vol: ' + str(self.volume) + ')'
+		return ''.join((self.filename, ' (vol: ', str(self.volume), ')'))
 
 
 	# CLASS Song END
+
+
+class GlobalEffect(object):
+	'''
+	Container for a global effect
+	'''
+
+	# {'name': effectName, 'key': effectKey, 'volume': effectVolume, 'file': effectFile, 'interrupting': interrupting}
+	def __init__(self, filename, key, name, volume = 100, interrupting = True):
+		self.filename = str(filename)
+		self.key = str(key)[0]
+		self.name = str(name)
+		self.volume = int(volume)
+		self.interrupting = bool(interrupting)
+
+
+	def __str__(self):
+		if self.interrupting:
+			s = ', interrupting'
+		else:
+			s = ''
+		return ''.join((self.key, ') ', self.name, ': ', self.filename, ' (vol: ', str(self.volume), s, ')'))
+
+
+	# CLASS GlobalEffect END
 
 
 class RPGbox(object):
@@ -254,10 +274,8 @@ class RPGbox(object):
 		'''
 
 		# Initiate class variables
-		self.version = None
-		self.themes = {}		# Saves theme keys and connects them to theme object {themeKey: Theme(), ...}
-		self.globalKeys = {}	# Saves global keys and connects them to global effect ids {globalKey: globalEffectID, ...}
-		self.globalEffects = {}	# Saves global effects in the manner {globalEffectID: {'name': effectName, 'key': effectKey, 'volume': effectVolume, 'file': effectFile, 'interrupting': bool}, ...}
+		self.themes = {}		# Saves theme keys and connects them to theme object {themeID: Theme(), ...}
+		self.globalEffects = {}	# Saves theme keys and connects them to global effect object {globalEffectID: GlobalEffect(), ...}
 
 		# Read in the file, parse it and point to root
 		root = ET.parse(filename).getroot()
@@ -265,12 +283,6 @@ class RPGbox(object):
 		# Basic tag checking
 		if root.tag != 'rpgbox':
 			raise NoValidRPGboxError('No valid RPGbox file!')
-
-		# Determine the version of the RPGbox file (NOT the XML version!)
-		try:
-			self.version = root.attrib['version']
-		except KeyError:
-			raise NoValidRPGboxError('Version attribute not given in <rpgbox> tag.')
 
 		# Scan through globals
 		for globalTag in root.iter('globals'):
@@ -284,31 +296,31 @@ class RPGbox(object):
 			globalsVolume = self._ensureVolume(globalsVolume)
 
 			for effect in globalTag.iter('effect'):
-				# Get id of the global effect (each global effect must have a unique id!)
+				# Get name of the global effect (each global effect must have a name!)
 				try:
-					effectID = effect.attrib['id']
+					effectID = effect.attrib['name']
 				except KeyError:
-					raise NoValidRPGboxError('A global effect without id was found. Each global effect must have a unique id!')
-				if effectID in self.globalKeys:	# No need to check for themes, as globals are processed earlier
-					raise NoValidRPGboxError('The id {} is already in use.'.format(themeID))
+					raise NoValidRPGboxError('A global effect without name was found. Each global effect must have a name!')
 
 				# Get the keyboard key of the effect (each global effect must have a unique key!)
 				try:
 					effectKey = effect.attrib['key'][0].lower() # get only first char and make it lowercase.
+					effectID = ord(effectKey)
 				except KeyError:
 					raise NoValidRPGboxError('A global effect without key was found. Each global effect must have a unique keyboard key!')
-				if ord(effectKey) in self.globalKeys:
-					raise NoValidRPGboxError('The key {} is already in use.'.format(effectKey))
-				self._ensureValidKey(effectKey)	# Ensure that the key is valid
 
-				# Get the effect file from the attribute of the tag.
+				if effectID in self.globalEffects:
+					raise NoValidRPGboxError('The key {} is already in use.'.format(effectKey))
+				self._ensureValidID(effectID)	# Ensure that the id is valid
+
+				# Get the effect file from the tag attribute
 				try:
-					globalsFile = effect.attrib['file']
-					if os.path.isfile(globalsFile):
-						globalsFile = None
+					effectFile = effect.attrib['file']
+					if os.path.isfile(effectFile):
+						effectFile = None
 				except KeyError:
 					raise NoValidRPGboxError('No file given in global effect.')
-				if globalsFile is None:
+				if effectFile is None:
 					raise NoValidRPGboxError('File {} not found in global.'.format(effect.attrib['file']))
 
 				# Get potential volume of the effect. Alter it by the globals volume
@@ -318,18 +330,11 @@ class RPGbox(object):
 					effectVolume = self.DEFAULT_VOLUME
 				effectVolume = self._ensureVolume(int(effectVolume * globalsVolume / 100))
 
-				# Get the effect name. If not available, use id as name
-				try:
-					effectName = effect.attrib['name']
-				except KeyError:
-					effectName = effectID
-
 				# Check, whether the effect should interrupt everything else
 				interrupting = ('interrupting' in effect.attrib)
 
-				# Save the global effect with its name, volume, and key.
-				self.globalKeys[effectKey] = effectID
-				self.globalEffects[effectID] = {'name': effectName, 'key': effectKey, 'volume': effectVolume, 'file': effectFile, 'interrupting': interrupting}
+				# Save the global effect
+				self.globalEffects[effectID] = GlobalEffect(filename = effectFile, key = effectKey, name = effectName, volume = effectVolume, interrupting = interrupting)
 
 		# Scan through themes
 		for theme in root.iter('theme'):
@@ -343,7 +348,7 @@ class RPGbox(object):
 
 			if themeID in self.themes or themeID in self.globalKeys:
 				raise NoValidRPGboxError('The key {} is already in use. Found in {}'.format(themeKey, themeID))
-			self._ensureValidKey(themeKey)	# Ensure that the key is valid
+			self._ensureValidID(themeID)	# Ensure that the id is valid
 
 			# Get the theme name. If not available, use id as name
 			try:
@@ -445,25 +450,26 @@ class RPGbox(object):
 	def __str__(self):
 		''' Used for print statements etc. Returns themes and global effects. Main use is debugging '''
 
-		ret = ['RPGmusicbox']
+		ret = ['RPGmusicbox', 'Themes']
 		for t in sorted(self.themes.keys()):
 			ret.append(str(self.themes[t]))
 
-		###### global effects missing
+		ret.append('Global effects')
+
+		for e in sorted(self.globalEffects.keys()):
+			ret.append(str(self.globalEffects[e]))
 
 		return '\n'.join(ret)
 
 
-	def _ensureValidKey(self, k):
+	def _ensureValidID(self, k):
 		'''
-		Ensures, that a given keyboard key is valid for the RPGbox.
+		Ensures, that a given keyboard key resp. the ID is valid for the RPGbox.
 
 		:raises: NoValidRPGboxError
 		'''
 
-		num = ord(k)
-
-		if not (48 <= num <= 57 or 97 <= num <= 122):
+		if not (48 <= k <= 57 or 97 <= k <= 122):
 			# Allowed: 0-9, a-z
 			raise NoValidRPGboxError
 
@@ -511,13 +517,7 @@ class RPGbox(object):
 	def getIDs(self):
 		''' Returns a tuple with two dicts: the global IDs and the theme IDs '''
 
-		return self.globalKeys, list(self.themes.keys())
-
-
-	def getGlobalKeysAndNames(self):
-		''' Returns a list of tuples with global keys and their names. '''
-
-		return [('1', 'Jeopardy Theme')] ################# Not yet implemented
+		return list(self.globalEffects.keys()), list(self.themes.keys())
 
 
 	def getGlobalEffects(self):
@@ -540,6 +540,11 @@ class RPGbox(object):
 
 class Player(object):
 
+	WHITE = (255, 255, 255)
+	BLACK = (0, 0, 0)
+	RED = (127, 0, 0)
+	GREY = (127, 127, 127)
+
 	def __init__(self, box, debug = True):
 		'''
 		Initiates all necessary stuff for playing an RPGbox.
@@ -557,7 +562,7 @@ class Player(object):
 
 		# Fill background
 		self.background = pygame.Surface(self.screen.get_size()).convert()	# Define a background surface
-		self.background.fill((255, 255, 255))							# Fill the background with white
+		self.background.fill(self.WHITE)									# Fill the background with white
 
 		self.screen.blit(self.background, (0, 0))
 		pygame.display.flip()
@@ -566,16 +571,16 @@ class Player(object):
 		self.SONG_END = pygame.USEREVENT + 1
 		pygame.mixer.music.set_endevent(self.SONG_END)
 
-		# Reserve a channel for global sounds, such that a global sound can always be played
+		# Reserve a channel for global sound effects, such that a global sound can always be played
 		pygame.mixer.set_reserved(1)
 		self.globalChannel = pygame.mixer.Channel(0)
-		self.initializeGlobalEffects()
 
 		# Initiate text stuff
 		w, h = self.background.get_size()
 		self.w = w // 3
 
-		self.myFont = pygame.font.Font(None, 24)	### I need more fonts for colors etc.
+		self.standardFont = pygame.font.Font(None, 24)
+		self.headerFont = pygame.font.Font(None, 32)
 
 		self.textGlobalKeys = pygame.Surface((self.w, h))
 		self.textThemeKeys = pygame.Surface((self.w, h))
@@ -583,7 +588,10 @@ class Player(object):
 
 		# Initialize variables
 		self.globalIDs, self.themeIDs = self.box.getIDs()
+		self.globalEffects = None
+		self.initializeGlobalEffects()
 		self.activeSounds = []
+		self.activeGlobalEffect = None
 		self.occurences = []
 		self.playlist = None
 		self.activeTheme = None
@@ -632,27 +640,33 @@ class Player(object):
 		pygame.display.flip()
 
 
+	def showLine(self, area, t, color, font):
+		textRect = font.render(t, True, color)
+		self.background.blit(textRect, area)
+		area.top += font.get_linesize()
+
 	def updateTextGlobalKeys(self, update = True):
-		text = ['GlobalKeys', '']
-		for k, t in self.box.getGlobalKeysAndNames():
-			text.append(''.join((k, ' - ', t)))
+		self.textGlobalKeys.fill(self.WHITE)
+		r = self.background.blit(self.textGlobalKeys, (0, 0))
 
 		area = self.textGlobalKeys.get_rect()
 		area.left = 5
 		area.top = 5
 
-		self.textGlobalKeys.fill((255, 255, 255))
-		self.background.blit(self.textGlobalKeys, (0, 0))
+		self.showLine(area, 'Global Keys', self.BLACK, self.headerFont)
+		self.showLine(area, '', self.BLACK, self.standardFont)
 
-		for t in text:
-			textRect = self.myFont.render(t, True, (0, 0, 0))
-			self.background.blit(textRect, area)
-			area.top += self.myFont.get_linesize()
+		for k in sorted(self.globalEffects.keys()):
+			t = ''.join((chr(k), ' - ', self.globalEffects[k].name))
+			if k == self.activeGlobalEffect:
+				self.showLine(area, t, self.RED, self.standardFont)
+			else:
+				self.showLine(area, t, self.BLACK, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
 		if update:
-			pygame.display.update() ####### How does it only update the important region?
+			pygame.display.update(r)
 
 
 	def updateTextThemeKeys(self, update = True):
@@ -664,18 +678,18 @@ class Player(object):
 		area.left = self.w + 5
 		area.top = 5
 
-		self.textThemeKeys.fill((255, 255, 255))
-		self.background.blit(self.textThemeKeys, (self.w, 0))
+		self.textThemeKeys.fill(self.WHITE)
+		r = self.background.blit(self.textThemeKeys, (self.w, 0))
 
 		for t in text:
-			textRect = self.myFont.render(t, True, (0, 0, 0))
+			textRect = self.standardFont.render(t, True, self.BLACK)
 			self.background.blit(textRect, area)
-			area.top += self.myFont.get_linesize()
+			area.top += self.standardFont.get_linesize()
 
 		self.screen.blit(self.background, (0, 0))
 
 		if update:
-			pygame.display.update() ####### How does it only update the important region?
+			pygame.display.update(r)
 
 
 	def updateTextNowPlaying(self, update = True):
@@ -708,18 +722,18 @@ class Player(object):
 		area.left = 2 * self.w + 5
 		area.top = 5
 
-		self.textNowPlaying.fill((255, 255, 255))
-		self.background.blit(self.textNowPlaying, (2 * self.w, 0))
+		self.textNowPlaying.fill(self.WHITE)
+		r = self.background.blit(self.textNowPlaying, (2 * self.w, 0))
 
 		for t in text:
-			textRect = self.myFont.render(t, True, (0, 0, 0))
+			textRect = self.standardFont.render(t, True, self.BLACK)
 			self.background.blit(textRect, area)
-			area.top += self.myFont.get_linesize()
+			area.top += self.standardFont.get_linesize()
 
 		self.screen.blit(self.background, (0, 0))
 
 		if update:
-			pygame.display.update() ####### How does it only update the important region?
+			pygame.display.update(r)
 
 
 	def playMusic(self, previous = False):
@@ -745,14 +759,28 @@ class Player(object):
 
 
 	def playGlobalEffect(self, effectID):
-		pass ############################
+		if self.globalChannel.get_busy():
+			self.debugPrint('Reserved channel is busy! Effect key: {}'.format(chr(effectID)))
+
+		self.activeGlobalChannel = effectID
+		self.globalChannel.play(self.globalEffects[effectID].obj)
+
+		self.updateTextGlobalKeys()
+
+		##### Must consider interrupting effects!
+		##### I must also consider the effects on and of pausing
+
+
+	def stopGlobalEffect(self):
+		self.activeGlobalChannel = None
+		self.globalChannel.stop()
 
 
 	def playSound(self):
 		if not self.paused and self.activeSounds and pygame.mixer.find_channel() is not None:
 			rand = random.random()
 			if rand < self.occurences[-1]:
-				for i in range(len(self.occurences)): #### probably replace with bisect
+				for i in range(len(self.occurences)): #### probably replace with bisect, if possible
 					if self.occurences[i] > rand:
 						newSound = self.activeSounds[i]
 						self.debugPrint('Now playing sound {} with volume {}'.format(newSound.filename, newSound.volume))
@@ -764,11 +792,9 @@ class Player(object):
 	def initializeGlobalEffects(self):
 		self.globalEffects = self.box.getGlobalEffects()
 
-		# {'name': effectName, 'key': effectKey, 'volume': effectVolume, 'file': effectFile, 'interrupting': bool}
-
 		for e in self.globalEffects:
-			self.globalEffects[e]['obj'] = pygame.mixer.Sound(self.globalEffects[e]['file'])
-			self.globalEffects[e]['obj'].set_volume(self.globalEffects[e]['volume'])
+			self.globalEffects[e].obj = pygame.mixer.Sound(self.globalEffects[e].filename)
+			self.globalEffects[e].obj.set_volume(self.globalEffects[e].volume)
 
 
 	def activateNewTheme(self, themeID):
@@ -796,6 +822,10 @@ class Player(object):
 
 
 	def start(self):
+
+		# remove clutter from the event queue
+		pygame.event.set_allowed(None)
+		pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.SONG_END])
 
 		# Start main loop
 		while True:
@@ -831,8 +861,12 @@ class Player(object):
 						self.playMusic(previous = True)
 
 					# The key is the key of the active theme -> do nothing
-					elif event.key == self.activeThemeKey:
+					elif event.key == self.activeThemeID:
 						pass
+
+					# The key is the key of the active global effect -> stop it
+					elif event.key == self.activeGlobalEffect:
+						self.stopGlobalEffect()
 
 					# The key is one of the theme keys -> activate the theme
 					elif event.key in self.themeIDs:

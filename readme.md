@@ -17,6 +17,7 @@ RPGbox is written in Python 2, but it is ready to be opened with Python 3 as wel
 
 - Python: http://www.python.org
 - Pygame: http://www.pygame.org/download.shtml
+
    or newer versions: https://bitbucket.org/pygame/pygame/downloads
 
 
@@ -32,7 +33,7 @@ The XML file
 The XML file contains information about all music, background noises, sound effects etc. Here is an example file:
 
 ```xml
-<rpgbox version="150824">
+<rpgbox>
 	<theme key="t" name="The first theme" basetime="3600" volume="100" default="default">
 		<background file="theme1/*.mp3" volume="100" />
 		<background file="theme1/veryLoudFile.mp3" volume="75" />
@@ -46,14 +47,14 @@ The XML file contains information about all music, background noises, sound effe
 	</theme>
 
 	<globals volume="100">
-		<global file="generalStuff/jeopardy.ogg" id="jeopardy" key="1" name="Jeopardy Thinking Music" volume="100" interrupting="interrupting" />
+		<global file="generalStuff/jeopardy.ogg" key="1" name="Jeopardy Thinking Music" volume="100" interrupting="interrupting" />
 	</globals>
 </rpgbox>
 ```
 
 All tags and attributes *must* be in lowercase.
 
-The contents of every RPGbox xml file must be contained in `<rpgbox version="xxx">...</rpgbox>`.
+The contents of every RPGbox xml file must be contained in `<rpgbox>...</rpgbox>`.
 
 Every theme starts with a `<theme>` tag that *must* have a `name` and a `key` attribute. Optionally, every theme can have a `basetime` and a base `volume`. The `name` is shown on the screen (in case you look at it). The `key` is the keyboard key (a-z, 0-9) that you want to press while in game to start this theme. The `basetime` is a reference time in seconds. The default value is 3600 seconds or one hour. It must be in range 1 to 36000 (one second to ten hours). See below at `<effect>` for more info on this attribute. The `volume` is the basic volume of the whole theme in percent. Default is 100 and it must be in range 0 to 100. Optionally, a theme may be set to `default`. If there is a `default` attribute this theme will be started directly, when the script starts. The text of the `default` attribute is irrelevant, it is just there to comply with the xml standard.
 
