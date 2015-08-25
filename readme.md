@@ -33,7 +33,7 @@ The XML file contains information about all music, background noises, sound effe
 
 ```xml
 <rpgbox version="150824">
-	<theme id="theme1" key="t" name="The first theme" basetime="3600" volume="100" default="default">
+	<theme key="t" name="The first theme" basetime="3600" volume="100" default="default">
 		<background file="theme1/*.mp3" volume="100" />
 		<background file="theme1/veryLoudFile.mp3" volume="75" />
 		<background file="generalStuff/niceBG?.mp3" />
@@ -41,7 +41,7 @@ The XML file contains information about all music, background noises, sound effe
 		<effect file="theme1/playThisOften.wav" occurence="120" volume="90" />
 	</theme>
 
-	<theme id="jungle" key="j">
+	<theme name="Jungle" key="j">
 		<background file="generalStuff/jungle.mp3" />
 	</theme>
 
@@ -55,7 +55,7 @@ All tags and attributes *must* be in lowercase.
 
 The contents of every RPGbox xml file must be contained in `<rpgbox version="xxx">...</rpgbox>`.
 
-Every theme starts with a `<theme>` tag that *must* have an `id` and a `key` attribute. Optionally, every theme can have a `name`, a `basetime`, and a base `volume`. The `id` must be unique and is mainly used internally. The `key` is the keyboard key (a-z, 0-9) that you want to press while in game to start this theme. The `name` is shown on the screen (in case you look at it). If no `name` is given, the `id` will be shown instead. The `basetime` is a reference time in seconds. The default value is 3600 seconds or one hour. It must be in range 1 to 36000 (one second to ten hours). See below at `<effect>` for more info on this attribute. The `volume` is the basic volume of the whole theme in percent. Default is 100 and it must be in range 0 to 100. Optionally, a theme may be set to `default`. If there is a `default` attribute this theme will be started directly, when the script starts. The text of the `default` attribute is irrelevant, it is just there to comply with the xml standard.
+Every theme starts with a `<theme>` tag that *must* have a `name` and a `key` attribute. Optionally, every theme can have a `basetime` and a base `volume`. The `name` is shown on the screen (in case you look at it). The `key` is the keyboard key (a-z, 0-9) that you want to press while in game to start this theme. The `basetime` is a reference time in seconds. The default value is 3600 seconds or one hour. It must be in range 1 to 36000 (one second to ten hours). See below at `<effect>` for more info on this attribute. The `volume` is the basic volume of the whole theme in percent. Default is 100 and it must be in range 0 to 100. Optionally, a theme may be set to `default`. If there is a `default` attribute this theme will be started directly, when the script starts. The text of the `default` attribute is irrelevant, it is just there to comply with the xml standard.
 
 Themes may contain an arbitrary number of `<background>` tags. With these tags, you can define music (or noise) files that permanently play in the background in a random order. Every background must have a `file` attribute that points to one or several files. You can address several files by using `*` (matches an arbitrary number of arbitrary characters), `?` (matches exactly one arbitrary character), or `[]` (matches exactly one character in a range of characters, e.g. `[0-9]` or `[asdf]`). In addition, backgrounds may have a `volume` in percent associated to them. Default is 100. The background volume will be adjusted by the theme volume.
 

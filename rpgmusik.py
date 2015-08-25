@@ -5,6 +5,7 @@
 #
 # Structural stuff
 # - Shall themes, music, sounds have their own classes? I think so!
+# - The theme id is currently not needed for anything (key has to be unique anyway). Should it be dropped?
 # - I have to think about / test, if I should preload *all* sounds in the beginning or (as it is now) preload only the active theme sounds.
 # - Use more precise inits for the different pygame classes instead of a general pygame.init()?
 # - Ignore unnecessary inputs, like mouse input?
@@ -54,7 +55,7 @@ class Playlist(object):
 		'''
 
 		if songs:
-			self.remember = remember
+			self.remember = int(remember)
 		else:
 			self.remember = 0
 
@@ -148,6 +149,49 @@ class Playlist(object):
 	# CLASS Playlist END
 
 
+class Theme(object):
+	'''
+	Container for themes.
+	'''
+
+	def __init__(self, key, name, songs = [], sounds = [], occurences = []):
+		self.key = str(key)[0]
+		self.name = str(name)
+
+		self.songs = songs
+		self.sounds = sounds
+		self.occurences = occurences
+
+
+	def addSong(self, song):
+		self.songs.append(song)
+
+
+	def addSound(self, sound):
+		self.sounds.append(sound)
+
+
+	def addOccurences(self, occurences):
+		self.occurences.extend(occurences)
+
+		if len(self.occurences) != len(self.songs):
+			raise KeyError('The number of songs is not equal to the number of occurences in {}!'.format(self.name))
+
+
+	# CLASS Theme END
+
+
+class Song(object):
+	'''
+	Container for a song
+	'''
+
+	def __init__(self, ):
+
+
+	# CLASS Song END
+
+
 class RPGbox(object):
 	'''
 	Contains music and sound information for an RPG evening.
@@ -169,14 +213,13 @@ class RPGbox(object):
 		'''
 		Reads all information from the given XML file `filename`.
 
-		:filename: String with the filename of the XML file
+		:param filename: String with the filename of the XML file
 		:raises: NoValidRPGboxError
 		'''
 
 		# Initiate class variables
 		self.version = None
-		self.themeKeys = {}		# Saves theme keys and connects them to theme ids {themeKey: themeID, ...}
-		self.themes = {}		# Saves themes in the manner {themeID: {'name': themeName, 'key': themeKey, 'musics': [], 'sounds': [], 'occurences': []}, ...}
+		self.themes = {}		# Saves theme keys and connects them to theme object {themeKey: Theme(), ...}
 		self.globalKeys = {}	# Saves global keys and connects them to global effect ids {globalKey: globalEffectID, ...}
 		self.globalEffects = {}	# Saves global effects in the manner {globalEffectID: {'name': effectName, 'key': effectKey, 'volume': effectVolume, 'file': effectFile, 'interrupting': bool}, ...}
 
@@ -210,7 +253,7 @@ class RPGbox(object):
 					effectID = effect.attrib['id']
 				except KeyError:
 					raise NoValidRPGboxError('A global effect without id was found. Each global effect must have a unique id!')
-				if effectID in self.globalKeys:	# No need to check for themeKeys, as globals are processed earlier
+				if effectID in self.globalKeys:	# No need to check for themes, as globals are processed earlier
 					raise NoValidRPGboxError('The id {} is already in use.'.format(themeID))
 
 				# Get the keyboard key of the effect (each global effect must have a unique key!)
@@ -254,20 +297,15 @@ class RPGbox(object):
 
 		# Scan through themes
 		for theme in root.iter('theme'):
-			# Get id of the theme (each theme must have a unique id!)
-			try:
-				themeID = theme.attrib['id']
-			except KeyError:
-				raise NoValidRPGboxError('A theme without id was found. Each theme must have a unique id!')
-			if themeID in self.themes or themeID in self.globalEffects:
-				raise NoValidRPGboxError('The id {} is already in use.'.format(themeID))
 
 			# Get the keyboard key of the theme (each theme must have a unique key!)
 			try:
-				themeKey = theme.attrib['key'][0].lower() # get only first char and make it lowercase. Uppercase is tricky with pygame.
+				themeKey = theme.attrib['key'][0].lower() # get only first char and make it lowercase.
+				themeID = ord(themeKey)
 			except KeyError:
 				raise NoValidRPGboxError('A theme without key was found. Each theme must have a unique keyboard key!')
-			if ord(themeKey) in self.themeKeys or ord(themeKey) in self.globalKeys:
+
+			if themeID in self.themes or themeID in self.globalKeys:
 				raise NoValidRPGboxError('The key {} is already in use. Found in {}'.format(themeKey, themeID))
 			self._ensureValidKey(themeKey)	# Ensure that the key is valid
 
@@ -275,7 +313,7 @@ class RPGbox(object):
 			try:
 				themeName = theme.attrib['name']
 			except KeyError:
-				themeName = themeID
+				raise NoValidRPGboxError('A theme without name was found. Each theme must have a name!')
 
 			# Get the theme volume. If not available, use default volume. If outside margins, set to margins.
 			# The theme volume is eventually not saved but directly taken account of for each sound effect and music
@@ -296,33 +334,30 @@ class RPGbox(object):
 
 			occurences = [0]
 
-			# Save key and id
-			self.themeKeys[ord(themeKey)] = themeID	# The key is saved as byte equivalent as pygame reads keystrokes as bytes
-			self.themes[themeID] = {'name': themeName, 'key': themeKey, 'musics': [], 'sounds': [], 'occurences': []}
-			########## Own Class for themes? musics? sounds?
+			self.themes[themeID] = Theme(key = themeKey, name = themeName)
 
-			# Scan through all subtags and get data like background musics and sound effects
+			# Scan through all subtags and get data like background songs and sound effects
 			for subtag in theme:
 				# <background> tag found
 				if subtag.tag == 'background':
-					# Get the music file(s) from the attribute of the tag (can be a glob)
+					# Get the song file(s) from the attribute of the tag (can be a glob)
 					try:
-						musicFiles = glob(subtag.attrib['file'])
+						songFiles = glob(subtag.attrib['file'])
 					except KeyError:
 						raise NoValidRPGboxError('No file given in background of {}'.format(themeName))
-					if not musicFiles:
+					if not songFiles:
 						raise NoValidRPGboxError('File {} not found in {}'.format(subtag.attrib['file'], themeName))
 
-					# Get potential volume of music. Alter it by the theme volume
+					# Get potential volume of song. Alter it by the theme volume
 					try:
 						volume = int(subtag.attrib['volume'])
 					except KeyError:
 						volume = self.DEFAULT_VOLUME
 					volume = self._ensureVolume(int(volume * themeVolume / 100))
 
-					# Save each music with its volume. If a filename occurs more than once, basically, the volume is updated
-					for musicFile in musicFiles:
-						self.themes[themeID]['musics'].append({'file': musicFile, 'volume': volume})
+					# Save each song with its volume. If a filename occurs more than once, basically, the volume is updated
+					for songFile in songFiles:
+						self.themes[themeID].addSong({'file': songFile, 'volume': volume})
 
 				# <effect> tag found
 				elif subtag.tag == 'effect':
@@ -350,7 +385,7 @@ class RPGbox(object):
 
 					# Save each sound with its volume. If a filename occurs more than once, basically, the volume and occurence are updated
 					for soundFile in soundFiles:
-						self.themes[themeID]['sounds'].append({'file': soundFile, 'volume': volume})
+						self.themes[themeID].addSound({'file': soundFile, 'volume': volume, 'occurence': occurence})
 						occurences.append(occurences[-1] + occurence)
 
 				# other tag found. We just ignore it.
@@ -363,25 +398,28 @@ class RPGbox(object):
 				for i in range(len(occurences)):
 					occurences[i] /= divisor
 
-			self.themes[themeID]['occurences'] = occurences[1:]
+			# Add occurences to the theme
+			self.themes[themeID].addOccurences(occurences[1:])
 
 		# Test, whether there is at least one theme in the whole box
-		if not self.themeKeys:
+		if not self.themes:
 			raise NoValidRPGboxError('No theme found! There must be at least one theme!')
 
 
 	def __str__(self):
 		''' Used for print statements etc. Returns themes and global effects. Main use is debugging '''
 
+		##### This could be elegantly solved by calling the __str__ methods of each theme object (that can call the __str__ methods of each song/sound object.
+
 		ret = []
-		for k in sorted(self.themes, key = lambda x: self.themes[x]['key']):
-			ret.append(self.themes[k]['key'] + ': ' + self.themes[k]['name'] + ' (' + k + ')')
-			ret.append('Musics:')
-			for m in self.themes[k]['musics']:
+		for t in sorted(self.themes.keys()):
+			ret.append(self.themes[t].key + ': ' + self.themes[t].name)
+			ret.append('Songs:')
+			for s in self.themes[t].songs:
 				ret.append('    vol: ' + str(m['volume']) + ', file: ' + m['file'])
 			ret.append('Sounds:')
-			for i in range(len(self.themes[k]['sounds'])):
-				ret.append('    vol: ' + str(self.themes[k]['sounds'][i]['volume']) + ', occ: ' + str(self.themes[k]['occurences'][i]) +  ', file: ' + self.themes[k]['sounds'][i]['file'])
+			for s in self.themes[t].sounds:
+				ret.append('    vol: ' + str(s['volume']) + ', occ: ' + str(s['occurence']) +  ', file: ' + s['file'])
 
 		###### global effects missing
 
@@ -442,10 +480,10 @@ class RPGbox(object):
 		return None
 
 
-	def getKeys(self):
-		''' Returns a tuple with two dicts: the global keys and the theme keys '''
+	def getIDs(self):
+		''' Returns a tuple with two dicts: the global IDs and the theme IDs '''
 
-		return self.globalKeys, self.themeKeys
+		return self.globalKeys, list(self.themes.keys())
 
 
 	def getGlobalKeysAndNames(self):
@@ -474,8 +512,8 @@ class RPGbox(object):
 	def getTheme(self, themeID):
 		''' Returns a dict with the selected theme, if it is available or None otherwise '''
 
-		if themeID in self.themeKeys:
-			return self.themes[self.themeKeys[themeID]]
+		if themeID in self.themes:
+			return self.themes[themeID]
 		else:
 			raise KeyError('The key {} was not found as theme key.'.format(themeID))
 
@@ -527,7 +565,7 @@ class Player(object):
 		self.textNowPlaying = pygame.Surface((self.w, h))
 
 		# Initialize variables
-		self.globalKeys, self.themeKeys = self.box.getKeys()
+		self.globalIDs, self.themeIDs = self.box.getIDs()
 		self.activeSounds = []
 		self.playlist = None
 		self.activeTheme = {'name': 'NONE', 'key': 0, 'musics': [], 'sounds': [], 'occurences': []}
@@ -770,11 +808,11 @@ class Player(object):
 						pass
 
 					# The key is one of the theme keys -> activate the theme
-					elif event.key in self.themeKeys:
+					elif event.key in self.themeIDs:
 						self.activateNewTheme(event.key)
 
 					# The key is one of the global keys -> trigger effect
-					elif event.key in self.globalKeys:
+					elif event.key in self.globalIDs:
 						self.playGlobalEffect(event.key)
 
 					# The key is the space key -> pause or unpause the player
