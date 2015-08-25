@@ -7,7 +7,6 @@
 # - Shall themes, music, sounds have their own classes? I think so!
 # - The theme id is currently not needed for anything (key has to be unique anyway). Should it be dropped?
 # - I have to think about / test, if I should preload *all* sounds in the beginning or (as it is now) preload only the active theme sounds.
-# - Use more precise inits for the different pygame classes instead of a general pygame.init()?
 # - Ignore unnecessary inputs, like mouse input?
 #
 # Must haves
@@ -163,6 +162,19 @@ class Theme(object):
 		self.occurences = occurences
 
 
+	def __str__(self):
+		ret = []
+		ret.append(self.key + ': ' + self.name)
+		ret.append('Songs:')
+		for s in self.songs:
+			ret.append('    ' + str(s))
+		ret.append('Sounds:')
+		for s in self.sounds:
+			ret.append('    ' + str(s))
+
+		return '\n'.join(ret)
+
+
 	def addSong(self, song):
 		self.songs.append(song)
 
@@ -177,8 +189,29 @@ class Theme(object):
 		if len(self.occurences) != len(self.songs):
 			raise KeyError('The number of songs is not equal to the number of occurences in {}!'.format(self.name))
 
+		for i in range(len(self.songs)):
+			self.songs[i].occurence = self.occurences[i]
+
 
 	# CLASS Theme END
+
+
+class Sound(object):
+	'''
+	Container for a sound
+	'''
+
+	def __init__(self, filename, volume = 100, occurence = 0.01):
+		self.filename = str(filename)
+		self.volume = int(volume)
+		self.occurence = float(occurence)
+
+
+	def __str__(self):
+		return self.filename + ' (vol: ' + str(self.volume) + ', occ: ' + self.occurence + ')'
+
+
+	# CLASS Sound END
 
 
 class Song(object):
@@ -186,7 +219,13 @@ class Song(object):
 	Container for a song
 	'''
 
-	def __init__(self, ):
+	def __init__(self, filename, volume = 100):
+		self.filename = str(filename)
+		self.volume = int(volume)
+
+
+	def __str__(self):
+		return self.filename + ' (vol: ' + str(self.volume) + ')'
 
 
 	# CLASS Song END
@@ -357,7 +396,7 @@ class RPGbox(object):
 
 					# Save each song with its volume. If a filename occurs more than once, basically, the volume is updated
 					for songFile in songFiles:
-						self.themes[themeID].addSong({'file': songFile, 'volume': volume})
+						self.themes[themeID].addSong(Song(songFile, volume))
 
 				# <effect> tag found
 				elif subtag.tag == 'effect':
@@ -385,7 +424,7 @@ class RPGbox(object):
 
 					# Save each sound with its volume. If a filename occurs more than once, basically, the volume and occurence are updated
 					for soundFile in soundFiles:
-						self.themes[themeID].addSound({'file': soundFile, 'volume': volume, 'occurence': occurence})
+						self.themes[themeID].addSound(Sound(soundFile, volume))
 						occurences.append(occurences[-1] + occurence)
 
 				# other tag found. We just ignore it.
@@ -409,17 +448,9 @@ class RPGbox(object):
 	def __str__(self):
 		''' Used for print statements etc. Returns themes and global effects. Main use is debugging '''
 
-		##### This could be elegantly solved by calling the __str__ methods of each theme object (that can call the __str__ methods of each song/sound object.
-
-		ret = []
+		ret = ['RPGmusicbox']
 		for t in sorted(self.themes.keys()):
-			ret.append(self.themes[t].key + ': ' + self.themes[t].name)
-			ret.append('Songs:')
-			for s in self.themes[t].songs:
-				ret.append('    vol: ' + str(m['volume']) + ', file: ' + m['file'])
-			ret.append('Sounds:')
-			for s in self.themes[t].sounds:
-				ret.append('    vol: ' + str(s['volume']) + ', occ: ' + str(s['occurence']) +  ', file: ' + s['file'])
+			ret.append(str(self.themes[t]))
 
 		###### global effects missing
 
@@ -473,8 +504,8 @@ class RPGbox(object):
 		return o
 
 
-	def getDefaultThemeKey(self):
-		''' Returns the default theme, if it is set, None otherwise '''
+	def getDefaultThemeID(self):
+		''' Returns the default theme ID '''
 
 		############## No possibility for default theme, yet!
 		return None
@@ -490,17 +521,6 @@ class RPGbox(object):
 		''' Returns a list of tuples with global keys and their names. '''
 
 		return [('1', 'Jeopardy Theme')] ################# Not yet implemented
-
-
-	def getThemeKeysAndNames(self):
-		''' Returns a list of tuples with theme keys and their names. '''
-
-		ret = []
-
-		for k in sorted(self.themes, key=lambda x: self.themes[x]['key']):
-			ret.append((self.themes[k]['key'], self.themes[k]['name']))
-
-		return ret
 
 
 	def getGlobalEffects(self):
@@ -533,9 +553,9 @@ class Player(object):
 		self.box = box
 
 		# Initialize pygame, screen and clock
-		pygame.init()	### Could be split into more precise inits to avoid initiating unnecessary parts. But probably ok like this.
+		pygame.init()
 		self.clock = pygame.time.Clock()
-		self.screen = pygame.display.set_mode((600, 400))	# Screen is 600*400 px large
+		self.screen = pygame.display.set_mode((800, 600))	# Screen is 800*600 px large
 		pygame.display.set_caption('RPGbox player')		# Set window title
 
 		# Fill background
@@ -558,7 +578,7 @@ class Player(object):
 		w, h = self.background.get_size()
 		self.w = w // 3
 
-		self.myFont = pygame.font.Font(None, 24)
+		self.myFont = pygame.font.Font(None, 24)	### I need more fonts for colors etc.
 
 		self.textGlobalKeys = pygame.Surface((self.w, h))
 		self.textThemeKeys = pygame.Surface((self.w, h))
@@ -567,11 +587,12 @@ class Player(object):
 		# Initialize variables
 		self.globalIDs, self.themeIDs = self.box.getIDs()
 		self.activeSounds = []
+		self.occurences = []
 		self.playlist = None
-		self.activeTheme = {'name': 'NONE', 'key': 0, 'musics': [], 'sounds': [], 'occurences': []}
-		self.activeThemeKey = self.box.getDefaultThemeKey()
-		if self.activeThemeKey:
-			self.activateNewTheme(self.activeThemeKey)
+		self.activeTheme = None
+		self.activeThemeID = self.box.getDefaultThemeID()
+		if self.activeThemeID:
+			self.activateNewTheme(self.activeThemeID)
 
 		self.cycle = 0
 		self.paused = False
@@ -607,14 +628,14 @@ class Player(object):
 
 
 	def updateTextAll(self):
-		self.updateTextGlobalKeys()
-		self.updateTextThemeKeys()
-		self.updateTextNowPlaying()
+		self.updateTextGlobalKeys(update = False)
+		self.updateTextThemeKeys(update = False)
+		self.updateTextNowPlaying(update = False)
 
 		pygame.display.flip()
 
 
-	def updateTextGlobalKeys(self, update = False):
+	def updateTextGlobalKeys(self, update = True):
 		text = ['GlobalKeys', '']
 		for k, t in self.box.getGlobalKeysAndNames():
 			text.append(''.join((k, ' - ', t)))
@@ -637,10 +658,10 @@ class Player(object):
 			pygame.display.update() ####### How does it only update the important region?
 
 
-	def updateTextThemeKeys(self, update = False):
+	def updateTextThemeKeys(self, update = True):
 		text = ['Available themes', '']
-		for k, t in self.box.getThemeKeysAndNames():
-			text.append(''.join((k, ' - ', t)))
+		for k in sorted(self.themes.keys()):
+			text.append(''.join((chr(k), ' - ', self.themes[k].name)))
 
 		area = self.textThemeKeys.get_rect()
 		area.left = self.w + 5
@@ -660,14 +681,14 @@ class Player(object):
 			pygame.display.update() ####### How does it only update the important region?
 
 
-	def updateTextNowPlaying(self, update = False):
+	def updateTextNowPlaying(self, update = True):
 		text = ['Now Playing', '']
 
 		if self.playlist is not None:
 			songs = self.playlist.getSongsForViewing()
 			for song in songs:
 				if song is not None:
-					text.append(song['file'])
+					text.append(song.filename)
 			text.append('')
 
 		if self.activeChannels:
@@ -704,24 +725,29 @@ class Player(object):
 			pygame.display.update() ####### How does it only update the important region?
 
 
-	def playMusic(self):
-		##### If only one music is available, it can easily be run in a loop by saying `play(-1)`
-		nextSong = self.playlist.nextSong()
+	def playMusic(self, previous = False):
+		##### If only one song is available, it can easily be run in a loop by saying `play(-1)`
+
+		if previous:
+			nextSong = self.playlist.previoussong()
+		else:
+			nextSong = self.playlist.nextSong()
 
 		if nextSong is not None:
-			self.debugPrint('Now playing {} with volume {}'.format(nextSong['file'], nextSong['volume']))
-			pygame.mixer.music.load(nextSong['file'])
-			pygame.mixer.music.set_volume(nextSong['volume'] / 100.0)
+			self.debugPrint('Now playing {} with volume {}'.format(nextSong.filename, nextSong.volume))
+			pygame.mixer.music.load(nextSong.filename)
+			pygame.mixer.music.set_volume(nextSong.volume / 100.0)
 			if self.paused:
 				self.newSongWhilePause = True
 			else:
 				pygame.mixer.music.play()
-			self.updateTextNowPlaying(update=True)
+			self.updateTextNowPlaying()
 		else:
-			self.debugPrint('No music available in theme {}'.format(self.activeTheme['name']))
+			if not previous:
+				self.debugPrint('No music available in theme {}'.format(self.activeTheme.name))
 
 
-	def playGlobalEffect(self, effect):
+	def playGlobalEffect(self, effectID):
 		pass ############################
 
 
@@ -732,10 +758,10 @@ class Player(object):
 				for i in range(len(self.occurences)): #### probably replace with bisect
 					if self.occurences[i] > rand:
 						newSound = self.activeSounds[i]
-						self.debugPrint('Now playing sound {} with volume {}'.format(newSound['file'], newSound['volume']))
-						self.activeChannels.append((newSound['file'], newSound['obj'].play()))
+						self.debugPrint('Now playing sound {} with volume {}'.format(newSound.filename, newSound.volume))
+						self.activeChannels.append((newSound.filename, newSound.obj.play()))
 						break
-		self.updateTextNowPlaying(update=True)
+		self.updateTextNowPlaying()
 
 
 	def initializeGlobalEffects(self):
@@ -748,23 +774,23 @@ class Player(object):
 			self.globalEffects[e]['obj'].set_volume(self.globalEffects[e]['volume'])
 
 
-	def activateNewTheme(self, themeKey):
-		self.activeTheme = self.box.getTheme(themeKey)
-		self.activeThemeKey = themeKey
+	def activateNewTheme(self, themeID):
+		self.activeTheme = self.box.getTheme(themeID)
+		self.activeThemeID = themeID
 
-		self.debugPrint('New theme is {}'.format(self.activeTheme['name']))
+		self.debugPrint('New theme is {}'.format(self.activeTheme.name))
 
 		# Get sounds and load them into pygame
-		self.activeSounds = copy.deepcopy(self.activeTheme['sounds'])
+		self.activeSounds = copy.deepcopy(self.activeTheme.sounds)
 		for i in range(len(self.activeSounds)):
-			self.activeSounds[i]['obj'] = pygame.mixer.Sound(self.activeSounds[i]['file'])
-			self.activeSounds[i]['obj'].set_volume(self.activeSounds[i]['volume'])
+			self.activeSounds[i].obj = pygame.mixer.Sound(self.activeSounds[i].filename)
+			self.activeSounds[i].obj.set_volume(self.activeSounds[i].volume)
 
-		self.playlist = Playlist(self.activeTheme['musics'])
+		self.playlist = Playlist(self.activeTheme.songs)
 
-		self.occurences = self.activeTheme['occurences']
+		self.occurences = self.activeTheme.occurences
 
-		# Push a SONG_END event on the event stack to trigger the start of a new song/music (causes a delay of one cycle, but that should be fine)
+		# Push a SONG_END event on the event stack to trigger the start of a new song (causes a delay of one cycle, but that should be fine)
 		pygame.event.post(pygame.event.Event(self.SONG_END))
 
 		pygame.mixer.stop()	# Stop all playing sounds
@@ -799,9 +825,13 @@ class Player(object):
 					elif event.key == K_SPACE:
 						self._togglePause()
 
-					# The "->" key was pressed -> next song (stopping the current song triggers starting the next song)
+					# The "->" key was pressed -> next song
 					elif event.key == K_RIGHT:
-						pygame.event.post(pygame.event.Event(self.SONG_END))
+						self.playMusic()
+
+					# The "<-" key was pressed -> previous song
+					elif event.key == K_LEFT:
+						self.playMusic(previous = True)
 
 					# The key is the key of the active theme -> do nothing
 					elif event.key == self.activeThemeKey:
@@ -819,7 +849,7 @@ class Player(object):
 					elif event.key == K_SPACE:
 						self._togglePause()
 
-				# The last song/music is finished (or a new theme was loaded) -> start new music, if available
+				# The last song is finished (or a new theme was loaded) -> start new song, if available
 				if event.type == self.SONG_END:
 					self.playMusic()
 
