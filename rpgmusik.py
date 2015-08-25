@@ -16,7 +16,7 @@
 # - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
 #
 # Ideas
-# - Config for individual fonts, colors etc?
+# - Config for individual fonts, colors etc? Could be something like: <config bgcolor="#000000" color="#ff2222" />
 # - Colors, background image, etc. depending on theme (as attribute)?
 # - Default starting theme (defined in the xml file)
 # - The screen output could be improved
@@ -40,6 +40,112 @@ from pygame.locals import *
 class NoValidRPGboxError(Exception):
 	''' Custom Exception for use when there is an error with the RPGbox XML file. '''
 	pass
+
+
+class Playlist(object):
+	''' Contains a playlist. '''
+
+	def __init__(self, songs, remember = 5):
+		'''
+		Initiates the playlist.
+
+		:param songs: List of available songs
+		:param remember: How many songs shall (minimum) be remembered to allow going back
+		'''
+
+		if songs:
+			self.remember = remember
+		else:
+			self.remember = 0
+
+		self.songs = songs
+		self.playlist = []
+		self.nowPlaying = -1
+
+		while len(self.playlist) < self.remember:
+			self._extendPlaylist()
+
+
+	def _extendPlaylist(self):
+		''' Extends the playlist '''
+
+		if len(self.songs) == 1:
+			self.playlist.append(self.songs[0])
+		else:
+			newSonglist = self.songs[:]
+			random.shuffle(newSonglist)
+
+			# prevent two songs from being played one after another (but don't try it indefinitely long)
+			i = 0
+			while newSonglist[0] == self.playlist[-1]:
+				if i >= 10:
+					break
+				random.shuffle(newSonglist)
+				i += 1
+
+			self.playlist.extend(newSonglist)
+
+
+	def _shortenPlaylist(self):
+		''' Cuts away parts in the beginning of the playlist to save memory '''
+
+		pass ############ (Do I ever need this? Memory consumption of the list is low anyway...)
+
+
+	def nextSong(self):
+		''' :returns: the next song '''
+
+		if not self.playlist:
+			return None
+
+		if self.nowPlaying > len(self.playlist) - self.remember:
+			self._extendPlaylist()
+
+		self.nowPlaying += 1
+
+		return self.playlist[self.nowPlaying]
+
+
+	def previousSong(self):
+		''' :returns: the previous song (if there is any) '''
+
+		if not self.playlist:
+			return None
+
+		self.nowPlaying -= 1
+
+		if self.nowPlaying >= 0:
+			return self.playlist[self.nowPlaying]
+		else:
+			self.nowPlaying = -1	# In case, previousSong() is called multiple times while in the beginning of the list, the pointer needs to be reset to -1, such that nextSong() starts at 0 again.
+			return None
+
+
+	def getSongsForViewing(self):
+		'''
+		:returns: A list with three songs that are the previous, current and next song. If there is only one song in the whole playlist, the list will have only one element.
+		'''
+
+		if not self.playlist:
+			return None
+
+		# If there is only one song in total
+		if len(self.songs) == 1:
+			return self.songs	# [the_only_song]
+
+		# If the first song did not yet start to play
+		if self.nowPlaying < 0:
+			return [None, None, self.playlist[0]]	# [None, None, next]
+
+		# If the first song plays
+		if self.nowPlaying == 0:
+			return [None] + self.playlist[0:2]	# [None, current, next]
+
+		# Usual playing
+		return self.playlist[self.nowPlaying - 1: self.nowPlaying + 2]	# [prev, current, next]
+
+
+	# CLASS Playlist END
 
 
 class RPGbox(object):
@@ -423,9 +529,7 @@ class Player(object):
 		# Initialize variables
 		self.globalKeys, self.themeKeys = self.box.getKeys()
 		self.activeSounds = []
-		self.activeMusics = {}
-		self.activeSong = 0
-		self.playlist = []
+		self.playlist = None
 		self.activeTheme = {'name': 'NONE', 'key': 0, 'musics': [], 'sounds': [], 'occurences': []}
 		self.activeThemeKey = self.box.getDefaultThemeKey()
 		if self.activeThemeKey:
@@ -521,8 +625,11 @@ class Player(object):
 	def updateTextNowPlaying(self, update = False):
 		text = ['Now Playing', '']
 
-		if self.playlist:
-			text.append(self.playlist[self.activeSong])
+		if self.playlist is not None:
+			songs = self.playlist.getSongsForViewing()
+			for song in songs:
+				if song is not None:
+					text.append(song['file'])
 			text.append('')
 
 		if self.activeChannels:
@@ -561,16 +668,12 @@ class Player(object):
 
 	def playMusic(self):
 		##### If only one music is available, it can easily be run in a loop by saying `play(-1)`
-		if self.activeMusics:
-			self.activeSong += 1
-			playlistAppendix = list(self.activeMusics.keys())
-			random.shuffle(playlistAppendix)
-			if self.activeSong >= len(self.playlist):
-				self.playlist = self.playlist[-10:] + playlistAppendix
-				self.activeSong = len(self.playlist) - len(self.activeMusics)
-			self.debugPrint('Now playing {} with volume {}'.format(self.playlist[self.activeSong], self.activeMusics[self.playlist[self.activeSong]]))
-			pygame.mixer.music.load(self.playlist[self.activeSong])
-			pygame.mixer.music.set_volume(self.activeMusics[self.playlist[self.activeSong]] / 100.0)
+		nextSong = self.playlist.nextSong()
+
+		if nextSong is not None:
+			self.debugPrint('Now playing {} with volume {}'.format(nextSong['file'], nextSong['volume']))
+			pygame.mixer.music.load(nextSong['file'])
+			pygame.mixer.music.set_volume(nextSong['volume'] / 100.0)
 			if self.paused:
 				self.newSongWhilePause = True
 			else:
@@ -619,14 +722,7 @@ class Player(object):
 			self.activeSounds[i]['obj'] = pygame.mixer.Sound(self.activeSounds[i]['file'])
 			self.activeSounds[i]['obj'].set_volume(self.activeSounds[i]['volume'])
 
-		# Get songs and create a playlist
-		self.activeMusics = {}
-		self.activeSong = 0
-		for song in self.activeTheme['musics']:
-			self.activeMusics[song['file']] = song['volume']
-
-		self.playlist = list(self.activeMusics.keys())
-		random.shuffle(self.playlist)
+		self.playlist = Playlist(self.activeTheme['musics'])
 
 		self.occurences = self.activeTheme['occurences']
 
@@ -638,11 +734,12 @@ class Player(object):
 		self.updateTextAll()
 
 
-	def play(self):
+	def start(self):
 
 		# Start main loop
 		while True:
-			self.clock.tick(10)	# Max 10 fps (More would be overkill, I think)
+			# Max 10 fps (More would be overkill, I think)
+			self.clock.tick(10)
 
 			# Let's see, what's in the event queue :)
 			for event in pygame.event.get():
@@ -709,5 +806,5 @@ if __name__ == '__main__':
 	#print(box)
 
 	player = Player(box)
-	player.play()
+	player.start()
 
