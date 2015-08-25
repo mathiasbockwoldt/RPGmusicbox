@@ -12,12 +12,11 @@
 # - Config for individual fonts, colors etc? Could be something like: <config bgcolor="#000000" color="#ff2222" />
 # - Colors, background image, etc. depending on theme (as attribute)?
 # - Default starting theme (defined in the xml file)
-# - The screen output could be improved
-#   + Music and Sound filenames could be presented better (e.g. without path and extension, underscores to space). This view might be toggleable by an F-Key
+# - The screen output could be further improved
 # - The extra keys like F1, F2, space and Esc could be shown in a kind of footer bar. Here, the status of pause, allowMusic, and allowSounds could be shown
 #
 # Bugs
-# - Non known
+# - Long song/sound names leave a trace at the right end of the screen
 #
 
 from __future__ import generators, division, with_statement, print_function
@@ -579,15 +578,22 @@ class Player(object):
 		self.globalChannel = pygame.mixer.Channel(0)
 
 		# Initiate text stuff
-		w, h = self.background.get_size()
-		self.w = w // 3
-
 		self.standardFont = pygame.font.Font(None, 24)
 		self.headerFont = pygame.font.Font(None, 32)
 
-		self.textGlobalKeys = pygame.Surface((self.w, h))
-		self.textThemeKeys = pygame.Surface((self.w, h))
-		self.textNowPlaying = pygame.Surface((self.w, h))
+		w, h = self.background.get_size()
+		self.displayWidth = w
+		self.displayPanelWidth = w // 3
+		self.displayFooterWidth = w // 5
+		self.displayHeight = h
+		self.displayPanelHeight = h - 2 * self.standardFont.size(' ')[1]
+		self.displayFooterHeight = h - self.displayPanelHeight
+		self.displayBorder = 5
+
+		self.textGlobalKeys = pygame.Surface((self.displayPanelWidth, self.displayPanelHeight))
+		self.textThemeKeys = pygame.Surface((self.displayPanelWidth, self.displayPanelHeight))
+		self.textNowPlaying = pygame.Surface((self.displayPanelWidth, self.displayPanelHeight))
+		self.textFooter = pygame.Surface((self.displayWidth, self.displayFooterHeight)) # The footer stretches horizontally to 100%. The displayFooterWidth is for the single elements in the footer.
 
 		# Initialize variables
 		self.globalIDs, self.themeIDs = self.box.getIDs()
@@ -629,6 +635,7 @@ class Player(object):
 			pygame.mixer.pause()
 			self.debugPrint('Player paused')
 			self.paused = True
+		self.updateTextFooter()
 
 
 	def toggleAllowMusic(self):
@@ -644,6 +651,7 @@ class Player(object):
 			self.allowMusic = True
 			pygame.event.post(pygame.event.Event(self.SONG_END))
 			self.debugPrint('Music switched on')
+		self.updateTextFooter()
 
 
 	def toggleAllowSounds(self):
@@ -659,6 +667,7 @@ class Player(object):
 		else:
 			self.allowSounds = True
 			self.debugPrint('Sound switched on')
+		self.updateTextFooter()
 
 
 	def debugPrint(self, t):
@@ -684,9 +693,11 @@ class Player(object):
 
 
 	def updateTextAll(self):
+		self.background.fill(self.WHITE)
 		self.updateTextGlobalKeys(update = False)
 		self.updateTextThemeKeys(update = False)
 		self.updateTextNowPlaying(update = False)
+		self.updateTextFooter(update = False)
 
 		pygame.display.flip()
 
@@ -702,8 +713,8 @@ class Player(object):
 		r = self.background.blit(self.textGlobalKeys, (0, 0))
 
 		area = self.textGlobalKeys.get_rect()
-		area.left = 5
-		area.top = 5
+		area.left = self.displayBorder
+		area.top = self.displayBorder
 
 		self.showLine(area, 'Global Keys', self.BLACK, self.headerFont)
 		self.showLine(area, '', self.BLACK, self.standardFont)
@@ -723,11 +734,11 @@ class Player(object):
 
 	def updateTextThemeKeys(self, update = True):
 		self.textThemeKeys.fill(self.WHITE)
-		r = self.background.blit(self.textThemeKeys, (self.w, 0))
+		r = self.background.blit(self.textThemeKeys, (self.displayPanelWidth, 0))
 
 		area = self.textThemeKeys.get_rect()
-		area.left = self.w + 5
-		area.top = 5
+		area.left = self.displayPanelWidth + self.displayBorder
+		area.top = self.displayBorder
 
 		self.showLine(area, 'Themes', self.BLACK, self.headerFont)
 		self.showLine(area, '', self.BLACK, self.standardFont)
@@ -747,11 +758,11 @@ class Player(object):
 
 	def updateTextNowPlaying(self, update = True):
 		self.textNowPlaying.fill(self.WHITE)
-		r = self.background.blit(self.textNowPlaying, (2 * self.w, 0))
+		r = self.background.blit(self.textNowPlaying, (2 * self.displayPanelWidth, 0))
 
 		area = self.textNowPlaying.get_rect()
-		area.left = 2 * self.w + 5
-		area.top = 5
+		area.left = 2 * self.displayPanelWidth + self.displayBorder
+		area.top = self.displayBorder
 
 		self.showLine(area, 'Now Playing', self.BLACK, self.headerFont)
 
@@ -787,6 +798,60 @@ class Player(object):
 				self.showLine(area, '', self.BLACK, self.standardFont)
 				for c in sorted(self.activeChannels):
 					self.showLine(area, self.prettifyPath(c[0]), self.RED, self.standardFont)
+
+		self.screen.blit(self.background, (0, 0))
+
+		if update:
+			pygame.display.update(r)
+
+
+	def showFooterElement(self, n, t1, t2, color, bgcolor, font):
+		s = pygame.Surface((self.displayFooterWidth, self.displayFooterHeight)).convert()
+		s.fill(bgcolor)
+		text1 = font.render(t1, True, color)
+		text2 = font.render(t2, True, color)
+
+		textPos1 = text1.get_rect()
+		textPos2 = text2.get_rect()
+
+		sPos = s.get_rect()
+
+		textPos1.centerx = sPos.centerx
+		textPos1.top = 0
+		s.blit(text1, textPos1)
+
+		textPos2.centerx = sPos.centerx
+		textPos2.top = textPos1.height
+		s.blit(text2, textPos2)
+
+		sPos.top = self.displayPanelHeight
+		sPos.left = n * self.displayFooterWidth
+
+		self.background.blit(s, sPos)
+
+
+	def updateTextFooter(self, update = True):
+		self.textFooter.fill(self.WHITE)
+		r = self.background.blit(self.textFooter, (0, self.displayPanelHeight))
+
+		if self.allowMusic:
+			self.showFooterElement(0, 'F1', 'allow music', self.BLACK, self.WHITE, self.standardFont)
+		else:
+			self.showFooterElement(0, 'F1', 'allow music', self.WHITE, self.BLACK, self.standardFont)
+
+		if self.allowSounds:
+			self.showFooterElement(1, 'F2', 'allow sounds', self.BLACK, self.WHITE, self.standardFont)
+		else:
+			self.showFooterElement(1, 'F2', 'allow sounds', self.WHITE, self.BLACK, self.standardFont)
+
+		if not self.paused:
+			self.showFooterElement(2, 'Space', 'pause', self.BLACK, self.WHITE, self.standardFont)
+		else:
+			self.showFooterElement(2, 'Space', 'pause', self.WHITE, self.BLACK, self.standardFont)
+
+		self.showFooterElement(3, 'F10', 'redraw screen', self.BLACK, self.WHITE, self.standardFont)
+
+		self.showFooterElement(4, 'Escape', 'quit', self.BLACK, self.WHITE, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -934,6 +999,11 @@ class Player(object):
 					# The F2 key was pressed -> (dis)allow Sounds
 					elif event.key == pygame.K_F2:
 						self.toggleAllowSounds()
+
+					# The F10 key was pressed -> force redrawing of the whole screen
+					####### This function is merely a helper function that should not be necessary when the program is mature
+					elif event.key == pygame.K_F10:
+						self.updateTextAll()
 
 					# The key is the key of the active theme -> do nothing
 					elif event.key == self.activeThemeID:

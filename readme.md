@@ -77,6 +77,7 @@ Other predefined keys are:
 - space: pause or unpause playback
 - F1: Allow or disallow music
 - F2: Allow or disallow sounds
+- F10: Force redrawing of the scren (Debugging function, likely to be removed later)
 - escape: quit
 
 
