@@ -4,9 +4,10 @@
 # # # #  To do  # # # #
 #
 # Must haves
-# - Better documentation of the source code. At least a well-describing doc string for every class and method
+# - No immediate *must* haves in my mind
 #
 # Ideas
+# - Write an own sound/music stop function? This would concentrate all requests for pause or interruption to one function.
 # - Config for individual fonts, colors etc? Could be something like: <config bgcolor="#000000" color="#ff2222" />
 # - Colors, background image, etc. depending on theme (as attribute)?
 # - The screen output could be further improved
@@ -14,7 +15,8 @@
 #
 # Bugs
 # - Long song/sound names leave a trace at the right end of the screen
-# - Interrupting global effects must be testet in all combinations with the pause/unpause function
+# - Interrupting global effects must be tested in all combinations with the pause/unpause function
+# - Cooldown time of sounds is not stopped by pausing or interrupting global effects
 #
 
 from __future__ import generators, division, with_statement, print_function
@@ -34,7 +36,7 @@ class NoValidRPGboxError(Exception):
 
 
 class Playlist(object):
-	''' Contains a playlist. '''
+	''' Contains a playlist that is dynamically extended, taking care that no song is repeated directly '''
 
 	def __init__(self, songs, remember = 5):
 		'''
@@ -58,7 +60,7 @@ class Playlist(object):
 
 
 	def _extendPlaylist(self):
-		''' Extends the playlist '''
+		''' Extends the playlist, taking care that no song is repeated directly '''
 
 		if len(self.songs) == 1:
 			self.playlist.append(self.songs[0])
@@ -85,7 +87,7 @@ class Playlist(object):
 
 
 	def nextSong(self):
-		''' :returns: the next song '''
+		''' :returns: The next song '''
 
 		if not self.playlist:
 			return None
@@ -99,7 +101,7 @@ class Playlist(object):
 
 
 	def previousSong(self):
-		''' :returns: the previous song (if there is any) '''
+		''' :returns: The previous song (if there is any) '''
 
 		if not self.playlist:
 			return None
@@ -109,13 +111,13 @@ class Playlist(object):
 		if self.nowPlaying >= 0:
 			return self.playlist[self.nowPlaying]
 		else:
-			self.nowPlaying = 0	# In case, previousSong() is called multiple times while in the beginning of the list, the pointer needs to be reset to -1, such that nextSong() starts at 0 again.
+			self.nowPlaying = 0	# In case, previousSong() is called multiple times while in the beginning of the list, the pointer needs to be reset to 0, such that nextSong() starts at 0 again.
 			return None
 
 
 	def getSongsForViewing(self):
 		'''
-		:returns: A list with three songs that are the previous, current and next song. If there is only one song in the whole playlist, the list will have only one element.
+		:returns: A list with three songs that are the previous, current and next song. If there is only one song in the whole playlist, the list will have only one element. If the current song is the first one in the playlist, the list will have only two elements.
 		'''
 
 		if not self.playlist:
@@ -142,10 +144,20 @@ class Playlist(object):
 
 class Theme(object):
 	'''
-	Container for themes.
+	Container for one theme including its songs and sounds.
 	'''
 
 	def __init__(self, key, name, songs = [], sounds = [], occurences = []):
+		'''
+		Initiates the theme.
+
+		:param key: The keyboard key to activate the theme. Must be a one-letter string.
+		:param name: String with the name of the theme.
+		:param songs: A list with songs in the theme.
+		:param sounds: A list with sounds in the theme.
+		:param occurences: A list with occurences of the songs in the theme.
+		'''
+
 		self.key = str(key)[0]
 		self.name = str(name)
 
@@ -155,6 +167,8 @@ class Theme(object):
 
 
 	def __str__(self):
+		''' :returns: A string representation of the theme with all songs and sounds. '''
+
 		ret = []
 		ret.append(''.join((self.key, ') ', self.name)))
 		ret.append('Songs:')
@@ -168,14 +182,33 @@ class Theme(object):
 
 
 	def addSong(self, song):
+		'''
+		Add a song to the theme.
+
+		:param song: The song to add
+		'''
+
 		self.songs.append(song)
 
 
 	def addSound(self, sound):
+		'''
+		Add a sound to the theme
+
+		:param sound: The sound to add
+		'''
+
 		self.sounds.append(sound)
 
 
 	def addOccurences(self, occurences):
+		'''
+		Adds a list of occurences to the theme. The total number of occurences after the addition must be the same as the total number of songs in the theme. So add the songs first.
+
+		:param occurences: List of occurences of the songs
+		:raises KeyError: When the total number of occurences does not fit the total number of songs in the theme
+		'''
+
 		self.occurences.extend(occurences)
 
 		if len(self.occurences) != len(self.sounds):
@@ -190,10 +223,20 @@ class Theme(object):
 
 class Sound(object):
 	'''
-	Container for a sound
+	Container for one sound.
 	'''
 
 	def __init__(self, filename, name, volume = 100, cooldown = 10, occurence = 0.01):
+		'''
+		Initiates the sound.
+
+		:param filename: String with the filename
+		:param name: String with the name
+		:param volume: Integer with the relative volume (already adjusted by the theme volume)
+		:param cooldown: Float with the cooldown time in seconds
+		:param occurence: Float with relative occururence (already adjusted by the theme basetime)
+		'''
+
 		self.filename = str(filename)
 		self.name = str(name)
 		self.volume = int(volume)
@@ -202,6 +245,8 @@ class Sound(object):
 
 
 	def __str__(self):
+		''' :returns: A string representation of the sound with all attributes. '''
+
 		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', '{:.4f}'.format(self.occurence), ', cd: ', str(self.cooldown), ')'))
 
 
@@ -210,16 +255,26 @@ class Sound(object):
 
 class Song(object):
 	'''
-	Container for a song
+	Container for one song.
 	'''
 
 	def __init__(self, filename, name, volume = 100):
+		'''
+		Initiates the song.
+
+		:param filename: String with the filename
+		:param name: String with the name
+		:param volume: Integer with the relative volume (already adjusted by the theme volume)
+		'''
+
 		self.filename = str(filename)
 		self.name = str(name)
 		self.volume = int(volume)
 
 
 	def __str__(self):
+		''' :returns: A string representation of the song with its volume. '''
+
 		return ''.join((self.filename, ' (vol: ', str(self.volume), ')'))
 
 
@@ -228,11 +283,20 @@ class Song(object):
 
 class GlobalEffect(object):
 	'''
-	Container for a global effect
+	Container for one global effect.
 	'''
 
-	# {'name': effectName, 'key': effectKey, 'volume': effectVolume, 'file': effectFile, 'interrupting': interrupting}
 	def __init__(self, filename, key, name, volume = 100, interrupting = True):
+		'''
+		Initiates the global effect.
+
+		:param filename: String with the filename
+		:param key: The keyboard key to activate the global effect. Must be a one-letter string.
+		:param name: String with the name
+		:param volume: Integer with the relative volume (already adjusted by the theme volume)
+		:param interrupting: Boolean that indicates, whether the global effect should interrupt playing music and sounds, or not.
+		'''
+
 		self.filename = str(filename)
 		self.key = str(key)[0]
 		self.name = str(name)
@@ -241,6 +305,8 @@ class GlobalEffect(object):
 
 
 	def __str__(self):
+		''' :returns: A string representation of the global effect with its attributes. '''
+
 		if self.interrupting:
 			s = ', interrupting'
 		else:
@@ -254,7 +320,7 @@ class GlobalEffect(object):
 class RPGbox(object):
 	'''
 	Contains music and sound information for an RPG evening.
-	Reads info from an XML file.
+	Reads infos from an XML file.
 	'''
 
 	DEFAULT_BASETIME = 3600		# Default basetime is 3600 seconds (1 hour)
@@ -267,12 +333,12 @@ class RPGbox(object):
 	MIN_VOLUME = 0				# Minimum volume is 0%
 	MAX_VOLUME = 100			# Maximum volume is 100%
 	DEFAULT_COOLDOWN = 10		# Default cooldown is 10 seconds
-	# MIN and MAX cooldown are not defined
+	# MIN and MAX cooldown are not defined, as they are not needed
 
 
 	def __init__(self, filename):
 		'''
-		Reads all information from the given XML file `filename`.
+		Reads all information from the given XML file.
 
 		:param filename: String with the filename of the XML file
 		:raises: NoValidRPGboxError
@@ -461,7 +527,7 @@ class RPGbox(object):
 
 
 	def __str__(self):
-		''' Used for print statements etc. Returns themes and global effects. Main use is debugging '''
+		''' :returns: All themes and global effects in the box. '''
 
 		ret = ['RPGmusicbox', 'Themes']
 		for t in sorted(self.themes.keys()):
@@ -490,20 +556,26 @@ class RPGbox(object):
 		return path
 
 
-	def _ensureValidID(self, k):
+	def _ensureValidID(self, kid):
 		'''
-		Ensures, that a given keyboard key resp. the ID is valid for the RPGbox.
+		Ensures, that a given keyboard key (or rather its ID) is valid for the RPGbox.
 
+		:param kid: The key ID to check (not the key, but its ID!)
 		:raises: NoValidRPGboxError
 		'''
 
-		if not (48 <= k <= 57 or 97 <= k <= 122):
-			# Allowed: 0-9, a-z
-			raise NoValidRPGboxError
+		# Allowed: 0-9, a-z
+		if not (48 <= kid <= 57 or 97 <= kid <= 122):
+			raise NoValidRPGboxError('The key {} is not in the allowed range (a-z and 0-9; lowercase only!)'.format(chr(kid)))
 
 
 	def _ensureVolume(self, v):
-		''' Ensures that a given volume is within the allowed range.'''
+		'''
+		Ensures that a given volume is within the allowed range.
+
+		:param v: The volume to check
+		:returns: The volume, that is guaranteed to be within the allowed range
+		'''
 
 		if v < self.MIN_VOLUME:
 			return self.MIN_VOLUME
@@ -514,7 +586,12 @@ class RPGbox(object):
 
 
 	def _ensureBasetime(self, b):
-		''' Ensures that a given basetime is within the allowed range.'''
+		'''
+		Ensures that a given basetime is within the allowed range.
+
+		:param b: The basetime to check
+		:returns: The basetime, that is guaranteed to be within the allowed range
+		'''
 
 		if b < self.MIN_BASETIME:
 			return self.MIN_BASETIME
@@ -525,7 +602,12 @@ class RPGbox(object):
 
 
 	def _ensureOccurence(self, o):
-		''' Ensures that a given basetime is within the allowed range.'''
+		'''
+		Ensures that a given occurence is within the allowed range.
+
+		:param o: The occurence to check
+		:returns: The occurence, that is guaranteed to be within the allowed range
+		'''
 
 		if o < self.MIN_OCCURENCE:
 			return self.MIN_OCCURENCE
@@ -536,19 +618,23 @@ class RPGbox(object):
 
 
 	def getIDs(self):
-		''' Returns a tuple with two dicts: the global IDs and the theme IDs '''
+		''' :returns: a tuple with two lists: the keys of all global IDs and the keys of all theme IDs '''
 
 		return list(self.globalEffects.keys()), list(self.themes.keys())
 
 
 	def getGlobalEffects(self):
-		''' Returns the global effects '''
+		''' :returns: all global effects (a dict in the form {globalEffectID: GlobalEffectObject, ...}) '''
 
 		return self.globalEffects
 
 
 	def getTheme(self, themeID):
-		''' Returns a dict with the selected theme, if it is available or None otherwise '''
+		'''
+		:param themeID: The id of the theme to get
+		:returns: The Theme object of the desired theme
+		:raises KeyError: if the given themeID is no themeID
+		'''
 
 		if themeID in self.themes:
 			return self.themes[themeID]
@@ -560,7 +646,11 @@ class RPGbox(object):
 
 
 class Player(object):
+	'''
+	This class can read RPGbox objects and play music and sounds etc.
+	'''
 
+	# Color definitions
 	WHITE = (255, 255, 255)
 	BLACK = (0, 0, 0)
 	RED = (200, 0, 0)
@@ -569,6 +659,9 @@ class Player(object):
 	def __init__(self, box, debug = True):
 		'''
 		Initiates all necessary stuff for playing an RPGbox.
+
+		:param box: The RPGbox object to read from
+		:param debug: Boolean that states, whether debugging texts should be send to STDOUT
 		'''
 
 		self.debug = debug
@@ -634,14 +727,37 @@ class Player(object):
 		self.newSongWhilePause = False
 		self.interruptingGlobalEffect = False
 		self.activeChannels = []
-		self.blockedSounds = {}	# {filename: timeToStartAgain, ...}
+		self.blockedSounds = {}	# {filename: timeToStartAgain, ...} ######## This does not work with pause or interrupting global effects! Maybe, I have to do the counting myself...
 
 		# Start visualisation
 		self.updateTextAll()
 
 
+	def debugPrint(self, t):
+		'''
+		Prints the given text, if debugging (self.debug) is active.
+
+		:param t: The text to print.
+		'''
+
+		if self.debug:
+			print(t)
+
+
+	def initializeGlobalEffects(self):
+		'''
+		Loads the file for each global effect to RAM and adjust its volume to have it ready.
+		'''
+
+		self.globalEffects = self.box.getGlobalEffects()
+
+		for e in self.globalEffects:
+			self.globalEffects[e].obj = pygame.mixer.Sound(self.globalEffects[e].filename)
+			self.globalEffects[e].obj.set_volume(self.globalEffects[e].volume)
+
+
 	def togglePause(self):
-		''' Pause or unpause music and sounds, depending on the self.paused variable. '''
+		''' Pause or unpause music and sounds, depending on the self.paused and self.interruptingGlobalEffect variables. '''
 
 		if self.paused:
 			self.debugPrint('Player unpaused')
@@ -664,7 +780,7 @@ class Player(object):
 
 
 	def toggleAllowMusic(self):
-		''' Allow or disallow music to be played '''
+		''' Allow or disallow music to be played. '''
 
 		if self.allowMusic:
 			self.allowMusic = False
@@ -680,7 +796,7 @@ class Player(object):
 
 
 	def toggleAllowSounds(self):
-		''' Allow or disallow sounds to be played '''
+		''' Allow or disallow sounds to be played. '''
 
 		if self.allowSounds:
 			self.allowSounds = False
@@ -695,17 +811,11 @@ class Player(object):
 		self.updateTextFooter()
 
 
-	def debugPrint(self, t):
-		''' Prints the given text, if debugging is active. '''
-
-		if self.debug:
-			print(t)
-
-
 	def updateTextAll(self):
+		''' Update the whole screen. '''
 		self.background.fill(self.WHITE)
-		self.updateTextGlobalKeys(update = False)
-		self.updateTextThemeKeys(update = False)
+		self.updateTextGlobalEffects(update = False)
+		self.updateTextThemes(update = False)
 		self.updateTextNowPlaying(update = False)
 		self.updateTextFooter(update = False)
 
@@ -713,12 +823,27 @@ class Player(object):
 
 
 	def showLine(self, area, t, color, font):
+		'''
+		Prints one line of text to a panel.
+
+		:param area: A rect with information, where the text shall be blitted on the background
+		:param t: The text to be rendered
+		:param color: The color of the text
+		:param font: The font object that shall be rendered
+		'''
+
 		textRect = font.render(t, True, color)
 		self.background.blit(textRect, area)
 		area.top += font.get_linesize()
 
 
-	def updateTextGlobalKeys(self, update = True):
+	def updateTextGlobalEffects(self, update = True):
+		'''
+		Update the global effects panel
+
+		:param update: Boolean to state, whether the display should be updated
+		'''
+
 		self.textGlobalKeys.fill(self.WHITE)
 		r = self.background.blit(self.textGlobalKeys, (0, 0))
 
@@ -742,7 +867,13 @@ class Player(object):
 			pygame.display.update(r)
 
 
-	def updateTextThemeKeys(self, update = True):
+	def updateTextThemes(self, update = True):
+		'''
+		Update the themes panel
+
+		:param update: Boolean to state, whether the display should be updated
+		'''
+
 		self.textThemeKeys.fill(self.WHITE)
 		r = self.background.blit(self.textThemeKeys, (self.displayPanelWidth, 0))
 
@@ -767,6 +898,12 @@ class Player(object):
 
 
 	def updateTextNowPlaying(self, update = True):
+		'''
+		Update the now playing panel
+
+		:param update: Boolean to state, whether the display should be updated
+		'''
+
 		self.textNowPlaying.fill(self.WHITE)
 		r = self.background.blit(self.textNowPlaying, (2 * self.displayPanelWidth, 0))
 
@@ -822,6 +959,17 @@ class Player(object):
 
 
 	def showFooterElement(self, n, t1, t2, color, bgcolor, font):
+		'''
+		Helper function for self.updateTextFooter(). Prints two lines of text to screen in a given color.
+
+		:param n: The number of the panel in the footer counted from the left (determines position)
+		:param t1: First line of the text to be rendered
+		:param t2: Second line of the text to be rendered
+		:param color: The color of the text
+		:param bgcolor: The background color
+		:param font: The font object that shall be rendered
+		'''
+
 		s = pygame.Surface((self.displayFooterWidth, self.displayFooterHeight)).convert()
 		s.fill(bgcolor)
 		text1 = font.render(t1, True, color)
@@ -847,6 +995,12 @@ class Player(object):
 
 
 	def updateTextFooter(self, update = True):
+		'''
+		Update the footer
+
+		:param update: Boolean to state, whether the display should be updated
+		'''
+
 		self.textFooter.fill(self.WHITE)
 		r = self.background.blit(self.textFooter, (0, self.displayPanelHeight))
 
@@ -876,8 +1030,14 @@ class Player(object):
 
 
 	def playMusic(self, previous = False):
+		'''
+		Plays the next or previous song. Any playing song will be replaced by the new song.
+
+		:param previous: If True, play previous song, if False, play next song.
+		'''
+
+		# If no music is allowed, don't do anything
 		if not self.allowMusic:
-			self.updateTextNowPlaying()
 			return
 
 		if previous:
@@ -903,6 +1063,12 @@ class Player(object):
 
 
 	def playGlobalEffect(self, effectID):
+		'''
+		Plays a global effect taking care of interrupting other music and sounds if necessary.
+
+		:param effectID: The ID of the effect to be played.
+		'''
+
 		if self.globalChannel.get_busy():
 			self.debugPrint('Reserved channel is busy! Effect key: {}'.format(chr(effectID)))
 
@@ -915,11 +1081,18 @@ class Player(object):
 		self.activeGlobalEffect = effectID
 		self.globalChannel.play(self.globalEffects[effectID].obj)
 
-		self.updateTextGlobalKeys()
+		self.updateTextGlobalEffects()
 		self.updateTextNowPlaying()
 
 
 	def stopGlobalEffect(self, byEndEvent = False):
+		'''
+		Stops a global effect, if it is still running.
+		Takes care of restarting potentially interrupted music and sounds.
+
+		:param byEndEvent: If True, this function is called, because the global effect stopped.
+		'''
+
 		self.activeGlobalEffect = None
 
 		if not byEndEvent:
@@ -932,10 +1105,15 @@ class Player(object):
 			#	c[1].unpause()
 
 		self.interruptingGlobalEffect = False
-		self.updateTextGlobalKeys()
+		self.updateTextGlobalEffects()
 
 
 	def playSound(self):
+		'''
+		Plays a random sound and adds its channel to the activeChannels list.
+		'''
+
+		# If sounds are not allowed, update the now playing panel and do nothing more
 		if not self.allowSounds:
 			self.updateTextNowPlaying()
 			return
@@ -955,15 +1133,13 @@ class Player(object):
 		self.updateTextNowPlaying()
 
 
-	def initializeGlobalEffects(self):
-		self.globalEffects = self.box.getGlobalEffects()
-
-		for e in self.globalEffects:
-			self.globalEffects[e].obj = pygame.mixer.Sound(self.globalEffects[e].filename)
-			self.globalEffects[e].obj.set_volume(self.globalEffects[e].volume)
-
-
 	def activateNewTheme(self, themeID):
+		'''
+		Activates a new theme. All sounds of that theme are loaded and their volumes adjusted. A new playlist is initiated with all songs. All running sounds are stopped and new music is played.
+
+		:param themeID: The ID of the theme to activate
+		'''
+
 		self.activeTheme = self.box.getTheme(themeID)
 		self.activeThemeID = themeID
 
@@ -988,6 +1164,9 @@ class Player(object):
 
 
 	def start(self):
+		'''
+		Starts the main loop, that takes care of events (e.g. key strokes) and triggers random sounds.
+		'''
 
 		# remove clutter from the event queue
 		pygame.event.set_allowed(None)

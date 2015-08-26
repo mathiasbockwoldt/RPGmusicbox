@@ -24,7 +24,7 @@ RPGbox is written in Python 2, but it is ready to be opened with Python 3 as wel
 Supported media files
 ---------------------
 
-Media support is limited by Pygame. Currently, only `ogg` and uncompressed `wav` files are generaly supported. Depending on the system, also `mp3` files may be supported for background music but not for sound effects.
+Media support is limited by Pygame. Currently, only `ogg` and uncompressed `wav` files are generaly supported. Depending on the system, also `mp3` files may be supported for background music but never for sound effects.
 
 
 The XML file
