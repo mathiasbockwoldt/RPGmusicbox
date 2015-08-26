@@ -34,7 +34,10 @@ The XML file contains information about all music, background noises, sound effe
 
 ```xml
 <rpgbox>
+	<config textcolor="black" bgcolor="white" emphcolor="#c80000" fadecolor="(127, 127, 127)" />
+
 	<theme key="t" name="The first theme" basetime="3600" volume="100" default="default">
+		<config textcolor="white" bgcolor="#169010" emphcolor="#ff9600" fadecolor="black" />
 		<background file="theme1/*.mp3" volume="100" />
 		<background file="theme1/veryLoudFile.mp3" volume="75" />
 		<background file="generalStuff/niceBG?.mp3" />
@@ -52,11 +55,15 @@ The XML file contains information about all music, background noises, sound effe
 </rpgbox>
 ```
 
-All tags and attributes *must* be in lowercase.
+All tags and attributes *must* be in lowercase. Indentation and empty lines don't have any effect.
 
 The contents of every RPGbox xml file must be contained in `<rpgbox>...</rpgbox>`.
 
+Basic colors may be defined with a `<config>` tag. The colors may be given in common names, hex notation (`#rrggbb`) or a tuple with three numbers from 0 to 255 that represent the red, green, and blue channel (`(0, 255, 134)`). With `textcolor` the text color is changed. `bgcolor` is responsible for the background. `emphcolor` is used for emphasizing text and `fadecolor` for fading text. The values in the example are the default values if no `<config>` is given.
+
 Every theme starts with a `<theme>` tag that *must* have a `name` and a `key` attribute. Optionally, every theme can have a `basetime` and a base `volume`. The `name` is shown on the screen (in case you look at it). The `key` is the keyboard key (a-z, 0-9) that you want to press while in game to start this theme. The `basetime` is a reference time in seconds. The default value is 3600 seconds or one hour. It must be in range 1 to 36000 (one second to ten hours). See below at `<effect>` for more info on this attribute. The `volume` is the basic volume of the whole theme in percent. Default is 100 and it must be in range 0 to 100. Optionally, a theme may be set to `default`. If there is a `default` attribute this theme will be started directly, when the script starts. The text of the `default` attribute is irrelevant, it is just there to comply with the xml standard.
+
+You may define colors specific to a theme. As with the general color options, this is done with a `<config>` tag. See above for explanation. If no `<config>` tag is given, the general colors will be used for this theme.
 
 Themes may contain an arbitrary number of `<background>` tags. With these tags, you can define music (or noise) files that permanently play in the background in a random order. Every background must have a `file` attribute that points to one or several files. You can address several files by using `*` (matches an arbitrary number of arbitrary characters), `?` (matches exactly one arbitrary character), or `[]` (matches exactly one character in a range of characters, e.g. `[0-9]` or `[asdf]`). In addition, backgrounds may have a `volume` in percent associated to them. Default is 100. The background volume will be adjusted by the theme volume.
 

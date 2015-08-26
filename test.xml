@@ -5,6 +5,7 @@
 	</theme>
 
 	<theme name="The Punkles" key="p">
+		<config textcolor="white" bgcolor="#169010" emphcolor="#ff9600" fadecolor="black" />
 		<background file="punkles/*.mp3" />
 		<effect file="voegel/*.wav" occurence="10" />
 	</theme>

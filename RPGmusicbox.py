@@ -4,12 +4,10 @@
 # # # #  To do  # # # #
 #
 # Must haves
-# - No immediate *must* haves in my mind
+# - Provide example "box" with songs and sounds and global effects in the public domain
 #
 # Ideas
-# - Write an own sound/music stop function? This would concentrate all requests for pause or interruption to one function.
-# - Config for individual fonts, colors etc? Could be something like: <config bgcolor="#000000" color="#ff2222" />
-# - Colors, background image, etc. depending on theme (as attribute)?
+# - Config for individual fonts, background, etc. for box and themes?
 # - The screen output could be further improved
 # - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
 #
@@ -147,12 +145,16 @@ class Theme(object):
 	Container for one theme including its songs and sounds.
 	'''
 
-	def __init__(self, key, name, songs = [], sounds = [], occurences = []):
+	def __init__(self, key, name, colorText, colorBackground, colorEmph, colorFade, songs = [], sounds = [], occurences = []):
 		'''
 		Initiates the theme.
 
 		:param key: The keyboard key to activate the theme. Must be a one-letter string.
 		:param name: String with the name of the theme.
+		:param colorText: The text color for this theme
+		:param colorBackground: The background color for this theme
+		:param colorEmph: The emphasizing color for this theme
+		:param colorFade: The fading color for this theme
 		:param songs: A list with songs in the theme.
 		:param sounds: A list with sounds in the theme.
 		:param occurences: A list with occurences of the songs in the theme.
@@ -164,6 +166,11 @@ class Theme(object):
 		self.songs = songs[:]
 		self.sounds = sounds[:]
 		self.occurences = occurences[:]
+
+		self.colorText = colorText
+		self.colorBackground = colorBackground
+		self.colorEmph = colorEmph
+		self.colorFade = colorFade
 
 
 	def __str__(self):
@@ -323,6 +330,7 @@ class RPGbox(object):
 	Reads infos from an XML file.
 	'''
 
+	# Default values
 	DEFAULT_BASETIME = 3600		# Default basetime is 3600 seconds (1 hour)
 	MIN_BASETIME = 1			# Minimum basetime is 1 second
 	MAX_BASETIME = 36000		# Maximum basetime is 36 000 seconds (10 hours)
@@ -334,6 +342,12 @@ class RPGbox(object):
 	MAX_VOLUME = 100			# Maximum volume is 100%
 	DEFAULT_COOLDOWN = 10		# Default cooldown is 10 seconds
 	# MIN and MAX cooldown are not defined, as they are not needed
+
+	# Default colors
+	COLOR_TEXT = (0, 0, 0)			# Text color: black
+	COLOR_BG = (255, 255, 255)		# Background color: white
+	COLOR_EMPH = (200, 0, 0)		# Emphasizing color: red
+	COLOR_FADE = (127, 127, 127)	# Fading color: grey
 
 
 	def __init__(self, filename):
@@ -355,15 +369,24 @@ class RPGbox(object):
 		if root.tag != 'rpgbox':
 			raise NoValidRPGboxError('No valid RPGbox file!')
 
+		# If a config is given, read it. If not, use default values.
+		try:
+			config = next(root.iter('config')):
+			self.colorText = pygame.Color(config.get('textcolor', default = self.COLOR_TEXT))
+			self.colorBackground = pygame.Color(config.get('bgcolor', default = self.COLOR_BG))
+			self.colorEmph = pygame.Color(config.get('emphcolor', default = self.COLOR_EMPH))
+			self.colorFade = pygame.Color(config.get('fadecolor', default = self.COLOR_FADE))
+		except StopIteration:
+			self.colorText = pygame.Color(self.COLOR_TEXT))
+			self.colorBackground = pygame.Color(self.COLOR_BG))
+			self.colorEmph = pygame.Color(self.COLOR_EMPH))
+			self.colorFade = pygame.Color(self.COLOR_FADE))
+
 		# Scan through globals
 		for globalTag in root.iter('globals'):
 			# Get the globals volume. If not available, use default volume. If outside margins, set to margins.
 			# The globals volume is eventually not saved but directly taken account of for each sound effect and music
-			try:
-				globalsVolume = int(globalTag.attrib['volume'])
-			except KeyError:
-				globalsVolume = self.DEFAULT_VOLUME
-
+			globalsVolume = int(globalTag.get('volume', default = self.DEFAULT_VOLUME))
 			globalsVolume = self._ensureVolume(globalsVolume)
 
 			for effect in globalTag.iter('effect'):
@@ -395,10 +418,7 @@ class RPGbox(object):
 					raise NoValidRPGboxError('File {} not found in global.'.format(effect.attrib['file']))
 
 				# Get potential volume of the effect. Alter it by the globals volume
-				try:
-					effectVolume = int(effect.attrib['volume'])
-				except KeyError:
-					effectVolume = self.DEFAULT_VOLUME
+				effectVolume = int(effect.get('volume', default = self.DEFAULT_VOLUME))
 				effectVolume = self._ensureVolume(int(effectVolume * globalsVolume / 100))
 
 				# Check, whether the effect should interrupt everything else
@@ -421,7 +441,7 @@ class RPGbox(object):
 				raise NoValidRPGboxError('The key {} is already in use. Found in {}'.format(themeKey, themeID))
 			self._ensureValidID(themeID)	# Ensure that the id is valid
 
-			# Get the theme name. If not available, use id as name
+			# Get the theme name. Each theme must have a name!
 			try:
 				themeName = theme.attrib['name']
 			except KeyError:
@@ -429,24 +449,32 @@ class RPGbox(object):
 
 			# Get the theme volume. If not available, use default volume. If outside margins, set to margins.
 			# The theme volume is eventually not saved but directly taken account of for each sound effect and music
-			try:
-				themeVolume = int(theme.attrib['volume'])
-			except KeyError:
-				themeVolume = self.DEFAULT_VOLUME
-
+			themeVolume = int(theme.get('volume', default = self.DEFAULT_VOLUME))
 			themeVolume = self._ensureVolume(themeVolume)
 
 			# Read theme basetime (How often soundeffects appear)
 			# The basetime is eventually not saved but directly taken account of for each sound effect
-			try:
-				basetime = int(theme.attrib['basetime'])
-			except KeyError:
-				basetime = self.DEFAULT_BASETIME
+			basetime = int(theme.get('basetime', default = self.DEFAULT_BASETIME))
 			basetime = self._ensureBasetime(basetime)
 
-			occurences = [0]
+			# If a config is given, read it. If not, use default values.
+			try:
+				config = next(theme.iter('config')):
+				colorText = pygame.Color(config.get('textcolor', default = self.colorText))
+				colorBackground = pygame.Color(config.get('bgcolor', default = self.colorBackground))
+				colorEmph = pygame.Color(config.get('emphcolor', default = self.colorEmph))
+				colorFade = pygame.Color(config.get('fadecolor', default = self.colorFade))
+			except StopIteration:
+				colorText = self.colorText)
+				colorBackground = self.colorBackground)
+				colorEmph = self.colorEmph)
+				colorFade = self.colorFade)
 
-			self.themes[themeID] = Theme(key = themeKey, name = themeName)
+			# Create the theme and add it to the themes dict
+			self.themes[themeID] = Theme(key = themeKey, name = themeName, colorText = colorText, colorBackground = colorBackground, colorEmph = colorEmph, colorFade = colorFade)
+
+			# Initiate the occurences list. First element must be 0
+			occurences = [0]
 
 			# Scan through all subtags and get data like background songs and sound effects
 			for subtag in theme:
@@ -461,10 +489,7 @@ class RPGbox(object):
 						raise NoValidRPGboxError('File {} not found in {}'.format(subtag.attrib['file'], themeName))
 
 					# Get potential volume of song. Alter it by the theme volume
-					try:
-						volume = int(subtag.attrib['volume'])
-					except KeyError:
-						volume = self.DEFAULT_VOLUME
+					volume = int(subtag.get('volume', default = self.DEFAULT_VOLUME))
 					volume = self._ensureVolume(int(volume * themeVolume / 100))
 
 					# Save each song with its volume. If a filename occurs more than once, basically, the volume is updated
@@ -483,30 +508,25 @@ class RPGbox(object):
 						raise NoValidRPGboxError('File {} not found in {}'.format(subtag.attrib['file'], themeName))
 
 					# Get relative volume of the sound. Alter it by the theme volume
-					try:
-						volume = int(subtag.attrib['volume'])
-					except KeyError:
-						volume = self.DEFAULT_VOLUME
+					volume = int(subtag.get('volume', default = self.DEFAULT_VOLUME))
 					volume = self._ensureVolume(int(volume * themeVolume / 100))
 
 					# Get occurence of the sound. Alter it by the theme basetime
-					try:
-						occurence = int(subtag.attrib['occurence'])
-					except KeyError:
-						occurence = self.DEFAULT_OCCURENCE * basetime
+					occurence = int(subtag.get('occurence', default = self.DEFAULT_OCCURENCE * basetime))
 					occurence = self._ensureOccurence(occurence / basetime)
 
 					# Get cooldown of the sound.
-					try:
-						cooldown = float(subtag.attrib['cooldown'])
-					except KeyError:
-						cooldown = self.DEFAULT_COOLDOWN
+					cooldown = float(subtag.get('cooldown', default = self.DEFAULT_COOLDOWN))
 
 					# Save each sound with its volume. If a filename occurs more than once, basically, the volume and occurence are updated
 					for soundFile in soundFiles:
 						name = self.prettifyPath(soundFile)
 						self.themes[themeID].addSound(Sound(soundFile, name, volume, cooldown))
 						occurences.append(occurences[-1] + occurence)
+
+				# config tag found. That was already analysed, so we just ignore it silently
+				elif subtag.tag == 'config':
+					pass
 
 				# other tag found. We just ignore it.
 				else:
@@ -650,12 +670,6 @@ class Player(object):
 	This class can read RPGbox objects and play music and sounds etc.
 	'''
 
-	# Color definitions
-	WHITE = (255, 255, 255)
-	BLACK = (0, 0, 0)
-	RED = (200, 0, 0)
-	GREY = (127, 127, 127)
-
 	def __init__(self, box, debug = True):
 		'''
 		Initiates all necessary stuff for playing an RPGbox.
@@ -674,10 +688,15 @@ class Player(object):
 		self.screen = pygame.display.set_mode((800, 600))	# Screen is 800*600 px large
 		pygame.display.set_caption('RPGbox player')		# Set window title
 
-		# Fill background
-		self.background = pygame.Surface(self.screen.get_size()).convert()	# Define a background surface
-		self.background.fill(self.WHITE)									# Fill the background with white
+		# Get colors
+		self.colorText = self.box.colorText
+		self.colorBackground = self.box.colorBackground
+		self.colorEmph = self.box.colorEmph
+		self.colorFade = self.box.colorFade
 
+		# Fill background
+		self.background = pygame.Surface(self.screen.get_size()).convert()
+		self.background.fill(self.colorBackground)
 		self.screen.blit(self.background, (0, 0))
 		pygame.display.flip()
 
@@ -813,7 +832,7 @@ class Player(object):
 
 	def updateTextAll(self):
 		''' Update the whole screen. '''
-		self.background.fill(self.WHITE)
+		self.background.fill(self.colorBackground)
 		self.updateTextGlobalEffects(update = False)
 		self.updateTextThemes(update = False)
 		self.updateTextNowPlaying(update = False)
@@ -844,22 +863,22 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textGlobalKeys.fill(self.WHITE)
+		self.textGlobalKeys.fill(self.colorBackground)
 		r = self.background.blit(self.textGlobalKeys, (0, 0))
 
 		area = self.textGlobalKeys.get_rect()
 		area.left = self.displayBorder
 		area.top = self.displayBorder
 
-		self.showLine(area, 'Global Keys', self.BLACK, self.headerFont)
-		self.showLine(area, '', self.BLACK, self.standardFont)
+		self.showLine(area, 'Global Keys', self.colorText, self.headerFont)
+		self.showLine(area, '', self.colorText, self.standardFont)
 
 		for k in sorted(self.globalEffects.keys()):
 			t = ''.join((chr(k), ' - ', self.globalEffects[k].name))
 			if k == self.activeGlobalEffect:
-				self.showLine(area, t, self.RED, self.standardFont)
+				self.showLine(area, t, self.colorEmph, self.standardFont)
 			else:
-				self.showLine(area, t, self.BLACK, self.standardFont)
+				self.showLine(area, t, self.colorText, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -874,22 +893,22 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textThemeKeys.fill(self.WHITE)
+		self.textThemeKeys.fill(self.colorBackground)
 		r = self.background.blit(self.textThemeKeys, (self.displayPanelWidth, 0))
 
 		area = self.textThemeKeys.get_rect()
 		area.left = self.displayPanelWidth + self.displayBorder
 		area.top = self.displayBorder
 
-		self.showLine(area, 'Themes', self.BLACK, self.headerFont)
-		self.showLine(area, '', self.BLACK, self.standardFont)
+		self.showLine(area, 'Themes', self.colorText, self.headerFont)
+		self.showLine(area, '', self.colorText, self.standardFont)
 
 		for k in sorted(self.box.themes.keys()):
 			t = ''.join((chr(k), ' - ', self.box.themes[k].name))
 			if k == self.activeThemeID:
-				self.showLine(area, t, self.RED, self.standardFont)
+				self.showLine(area, t, self.colorEmph, self.standardFont)
 			else:
-				self.showLine(area, t, self.BLACK, self.standardFont)
+				self.showLine(area, t, self.colorText, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -904,32 +923,32 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textNowPlaying.fill(self.WHITE)
+		self.textNowPlaying.fill(self.colorBackground)
 		r = self.background.blit(self.textNowPlaying, (2 * self.displayPanelWidth, 0))
 
 		area = self.textNowPlaying.get_rect()
 		area.left = 2 * self.displayPanelWidth + self.displayBorder
 		area.top = self.displayBorder
 
-		self.showLine(area, 'Now Playing', self.BLACK, self.headerFont)
+		self.showLine(area, 'Now Playing', self.colorText, self.headerFont)
 
 		songs = self.playlist.getSongsForViewing()
 
 		if songs is not None:
-			self.showLine(area, '', self.BLACK, self.standardFont)
+			self.showLine(area, '', self.colorText, self.standardFont)
 
 			if len(songs) == 1:
-				self.showLine(area, '>> ' + songs[0].name, self.RED, self.standardFont)
+				self.showLine(area, '>> ' + songs[0].name, self.colorEmph, self.standardFont)
 			elif len(songs) == 2:
 				if songs[0]:
-					self.showLine(area, songs[0].name, self.RED, self.standardFont)
+					self.showLine(area, songs[0].name, self.colorEmph, self.standardFont)
 				else:
-					self.showLine(area, '', self.BLACK, self.standardFont)
-				self.showLine(area, songs[1].name, self.BLACK, self.standardFont)
+					self.showLine(area, '', self.colorText, self.standardFont)
+				self.showLine(area, songs[1].name, self.colorText, self.standardFont)
 			else:
-				self.showLine(area, songs[0].name, self.GREY, self.standardFont)
-				self.showLine(area, songs[1].name, self.RED, self.standardFont)
-				self.showLine(area, songs[2].name, self.BLACK, self.standardFont)
+				self.showLine(area, songs[0].name, self.colorFade, self.standardFont)
+				self.showLine(area, songs[1].name, self.colorEmph, self.standardFont)
+				self.showLine(area, songs[2].name, self.colorText, self.standardFont)
 
 		if self.activeChannels:
 			toDelete = []
@@ -942,9 +961,9 @@ class Player(object):
 
 			# all members may have been deleted, that's why here is a new `if`
 			if self.activeChannels:
-				self.showLine(area, '', self.BLACK, self.standardFont)
+				self.showLine(area, '', self.colorText, self.standardFont)
 				for c in sorted(self.activeChannels):
-					self.showLine(area, c[0], self.RED, self.standardFont)
+					self.showLine(area, c[0], self.colorEmph, self.standardFont)
 
 		if self.blockedSounds:
 			now = time.time()
@@ -1001,27 +1020,27 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textFooter.fill(self.WHITE)
+		self.textFooter.fill(self.colorBackground)
 		r = self.background.blit(self.textFooter, (0, self.displayPanelHeight))
 
 		if self.allowMusic:
-			self.showFooterElement(0, 'F1', 'allow music', self.BLACK, self.WHITE, self.standardFont)
+			self.showFooterElement(0, 'F1', 'allow music', self.colorText, self.colorBackground, self.standardFont)
 		else:
-			self.showFooterElement(0, 'F1', 'allow music', self.WHITE, self.BLACK, self.standardFont)
+			self.showFooterElement(0, 'F1', 'allow music', self.colorBackground, self.colorText, self.standardFont)
 
 		if self.allowSounds:
-			self.showFooterElement(1, 'F2', 'allow sounds', self.BLACK, self.WHITE, self.standardFont)
+			self.showFooterElement(1, 'F2', 'allow sounds', self.colorText, self.colorBackground, self.standardFont)
 		else:
-			self.showFooterElement(1, 'F2', 'allow sounds', self.WHITE, self.BLACK, self.standardFont)
+			self.showFooterElement(1, 'F2', 'allow sounds', self.colorBackground, self.colorText, self.standardFont)
 
 		if not self.paused:
-			self.showFooterElement(2, 'Space', 'pause', self.BLACK, self.WHITE, self.standardFont)
+			self.showFooterElement(2, 'Space', 'pause', self.colorText, self.colorBackground, self.standardFont)
 		else:
-			self.showFooterElement(2, 'Space', 'pause', self.WHITE, self.BLACK, self.standardFont)
+			self.showFooterElement(2, 'Space', 'pause', self.colorBackground, self.colorText, self.standardFont)
 
-		self.showFooterElement(3, 'F10', 'redraw screen', self.BLACK, self.WHITE, self.standardFont)
+		self.showFooterElement(3, 'F10', 'redraw screen', self.colorText, self.colorBackground, self.standardFont)
 
-		self.showFooterElement(4, 'Escape', 'quit', self.BLACK, self.WHITE, self.standardFont)
+		self.showFooterElement(4, 'Escape', 'quit', self.colorText, self.colorBackground, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -1144,6 +1163,12 @@ class Player(object):
 		self.activeThemeID = themeID
 
 		self.debugPrint('New theme is {}'.format(self.activeTheme.name))
+
+		# Update colors
+		self.colorText = self.activeTheme.colorText
+		self.colorBackground = self.activeTheme.colorBackground
+		self.colorEmph = self.activeTheme.colorEmph
+		self.colorFade = self.activeTheme.colorFade
 
 		# Get sounds and load them into pygame
 		self.activeSounds = copy.deepcopy(self.activeTheme.sounds)
