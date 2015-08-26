@@ -13,7 +13,6 @@
 # - Colors, background image, etc. depending on theme (as attribute)?
 # - Default starting theme (defined in the xml file)
 # - The screen output could be further improved
-# - The extra keys like F1, F2, space and Esc could be shown in a kind of footer bar. Here, the status of pause, allowMusic, and allowSounds could be shown
 #
 # Bugs
 # - Long song/sound names leave a trace at the right end of the screen
@@ -23,7 +22,7 @@ from __future__ import generators, division, with_statement, print_function
 
 import pygame
 import sys
-import os.path
+import os
 import copy
 import random
 import xml.etree.ElementTree as ET
@@ -1040,6 +1039,10 @@ if __name__ == '__main__':
 		filename = sys.argv[1]
 	else:
 		filename = 'test.xml'
+
+	# change working directory to the xml file's working directory, so that the paths to media are correct
+	os.chdir(os.path.dirname(os.path.realpath(filename)))
+	filename = os.path.basename(filename)
 
 	box = RPGbox(filename)
 
