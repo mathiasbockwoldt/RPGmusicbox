@@ -14,7 +14,6 @@
 #
 # Bugs
 # - Long song/sound names leave a trace at the right end of the screen
-# - Interrupting global effects must be tested in all combinations with the pause/unpause and allowMusic/Sounds functions
 # - Cooldown time of sounds is not stopped by pausing or interrupting global effects
 #
 
@@ -372,16 +371,16 @@ class RPGbox(object):
 
 		# If a config is given, read it. If not, use default values.
 		try:
-			config = next(root.iter('config')):
+			config = next(root.iter('config'))
 			self.colorText = pygame.Color(config.get('textcolor', default = self.COLOR_TEXT))
 			self.colorBackground = pygame.Color(config.get('bgcolor', default = self.COLOR_BG))
 			self.colorEmph = pygame.Color(config.get('emphcolor', default = self.COLOR_EMPH))
 			self.colorFade = pygame.Color(config.get('fadecolor', default = self.COLOR_FADE))
 		except StopIteration:
-			self.colorText = pygame.Color(self.COLOR_TEXT))
-			self.colorBackground = pygame.Color(self.COLOR_BG))
-			self.colorEmph = pygame.Color(self.COLOR_EMPH))
-			self.colorFade = pygame.Color(self.COLOR_FADE))
+			self.colorText = pygame.Color(self.COLOR_TEXT)
+			self.colorBackground = pygame.Color(self.COLOR_BG)
+			self.colorEmph = pygame.Color(self.COLOR_EMPH)
+			self.colorFade = pygame.Color(self.COLOR_FADE)
 
 		# Scan through globals
 		for globalTag in root.iter('globals'):
@@ -460,16 +459,16 @@ class RPGbox(object):
 
 			# If a config is given, read it. If not, use default values.
 			try:
-				config = next(theme.iter('config')):
+				config = next(theme.iter('config'))
 				colorText = pygame.Color(config.get('textcolor', default = self.colorText))
 				colorBackground = pygame.Color(config.get('bgcolor', default = self.colorBackground))
 				colorEmph = pygame.Color(config.get('emphcolor', default = self.colorEmph))
 				colorFade = pygame.Color(config.get('fadecolor', default = self.colorFade))
 			except StopIteration:
-				colorText = self.colorText)
-				colorBackground = self.colorBackground)
-				colorEmph = self.colorEmph)
-				colorFade = self.colorFade)
+				colorText = self.colorText
+				colorBackground = self.colorBackground
+				colorEmph = self.colorEmph
+				colorFade = self.colorFade
 
 			# Create the theme and add it to the themes dict
 			self.themes[themeID] = Theme(key = themeKey, name = themeName, colorText = colorText, colorBackground = colorBackground, colorEmph = colorEmph, colorFade = colorFade)
@@ -754,7 +753,7 @@ class Player(object):
 		self.newSongWhilePause = False
 		self.interruptingGlobalEffect = False
 		self.activeChannels = []
-		self.blockedSounds = {}	# {filename: timeToStartAgain, ...} ######## This does not work with pause or interrupting global effects! Maybe, I have to do the counting myself...
+		self.blockedSounds = {}	# {filename: timeToStartAgain, ...}
 
 		# Start visualisation
 		self.updateTextAll()
@@ -790,8 +789,7 @@ class Player(object):
 			self.debugPrint('Player unpaused')
 			self.paused = False
 			if self.interruptingGlobalEffect:
-				if not self.globalChannel.get_busy():
-					self.globalChannel.unpause()
+				self.globalChannel.unpause()
 			else:
 				pygame.mixer.music.unpause()
 				pygame.mixer.unpause()
@@ -846,13 +844,21 @@ class Player(object):
 			self.colorBackground = self.COLOR_BG
 			self.colorEmph = self.COLOR_EMPH
 			self.colorFade = self.COLOR_FADE
-			self.allowCustomColors = True
+			self.allowCustomColors = False
 		else:
-			self.colorText = self.activeTheme.colorText
-			self.colorBackground = self.activeTheme.colorBackground
-			self.colorEmph = self.activeTheme.colorEmph
-			self.colorFade = self.activeTheme.colorFade
+			if self.activeTheme is None:
+				self.colorText = self.box.colorText
+				self.colorBackground = self.box.colorBackground
+				self.colorEmph = self.box.colorEmph
+				self.colorFade = self.box.colorFade
+			else:
+				self.colorText = self.activeTheme.colorText
+				self.colorBackground = self.activeTheme.colorBackground
+				self.colorEmph = self.activeTheme.colorEmph
+				self.colorFade = self.activeTheme.colorFade
 			self.allowCustomColors = True
+
+		self.updateTextAll()
 
 
 	def updateTextAll(self):
@@ -991,9 +997,8 @@ class Player(object):
 					self.showLine(area, c[0], self.colorEmph, self.standardFont)
 
 		if self.blockedSounds:
-			now = time.time()
 			for k in self.blockedSounds.keys():
-				if self.blockedSounds[k] < now:
+				if self.blockedSounds[k] < 0:
 					del(self.blockedSounds[k])
 
 		self.screen.blit(self.background, (0, 0))
@@ -1063,7 +1068,7 @@ class Player(object):
 		else:
 			self.showFooterElement(2, 'Space', 'pause', self.colorBackground, self.colorText, self.standardFont)
 
-		if self.allowSounds:
+		if self.allowCustomColors:
 			self.showFooterElement(3, 'F5', 'custom colors', self.colorText, self.colorBackground, self.standardFont)
 		else:
 			self.showFooterElement(3, 'F5', 'custom colors', self.colorBackground, self.colorText, self.standardFont)
@@ -1177,7 +1182,7 @@ class Player(object):
 						newSound = self.activeSounds[i]
 						self.debugPrint('Now playing sound {} with volume {}'.format(newSound.filename, newSound.volume))
 						self.activeChannels.append((newSound.name, newSound.obj.play()))
-						self.blockedSounds[newSound.filename] = time.time() + newSound.obj.get_length() + newSound.cooldown
+						self.blockedSounds[newSound.filename] = newSound.obj.get_length() + newSound.cooldown
 						break
 		self.updateTextNowPlaying()
 
@@ -1305,6 +1310,9 @@ class Player(object):
 			# Sound effects can be triggered every tenth cycle (about every second).
 			if self.cycle > 10:
 				self.cycle = 0
+				if self.blockedSounds:
+					for k in self.blockedSounds.keys():
+						self.blockedSounds[k] -= 0
 				self.playSound()
 			self.cycle += 1
 

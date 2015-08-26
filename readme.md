@@ -16,9 +16,7 @@ Dependencies
 RPGbox is written in Python 2, but it is ready to be opened with Python 3 as well. The script needs Pygame, which is currently more stable with Python 2. If you installed Pygame for Python 3, you can run the script with Python 3 as well.
 
 - Python: http://www.python.org
-- Pygame: http://www.pygame.org/download.shtml
-
-   or newer versions: https://bitbucket.org/pygame/pygame/downloads
+- Pygame: http://www.pygame.org/download.shtml or newer versions: https://bitbucket.org/pygame/pygame/downloads
 
 
 Supported media files
@@ -105,6 +103,14 @@ Here are some suggestions of free sources on the net.
 - [Game Theme Songs](http://www.gamethemesongs.com) also has many, many game songs.
 
 Take care when you want to use prominent soundtracks for gaming. It can create an unwanted atmosphere. Imagine a serious fight of the player vampires against NPC werewolves. The mood is tense, it's a narrow fight – and suddenly the Pirates of the Caribbean main theme blares through the room. This theme is certainly suited for action scenes, but it is completely wrong in an intense fight in the World of Darkness.
+
+
+Similar programs
+----------------
+
+- In addtion to the abovementioned background tracks, [Tabletop Audio](http://tabletopaudio.com) also offers a sound pad with some preconfigured sets.
+
+- http://www.ambient-mixer.com
 
 
 Bugs and things that are planned to do
