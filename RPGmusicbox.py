@@ -671,6 +671,12 @@ class Player(object):
 	This class can read RPGbox objects and play music and sounds etc.
 	'''
 
+	# Default colors
+	COLOR_TEXT = (0, 0, 0)			# Text color: black
+	COLOR_BG = (255, 255, 255)		# Background color: white
+	COLOR_EMPH = (200, 0, 0)		# Emphasizing color: red
+	COLOR_FADE = (127, 127, 127)	# Fading color: grey
+
 	def __init__(self, box, debug = True):
 		'''
 		Initiates all necessary stuff for playing an RPGbox.
@@ -718,7 +724,7 @@ class Player(object):
 		w, h = self.background.get_size()
 		self.displayWidth = w
 		self.displayPanelWidth = w // 3
-		self.displayFooterWidth = w // 5
+		self.displayFooterWidth = w // 6
 		self.displayHeight = h
 		self.displayPanelHeight = h - 2 * self.standardFont.size(' ')[1]
 		self.displayFooterHeight = h - self.displayPanelHeight
@@ -743,6 +749,7 @@ class Player(object):
 		self.cycle = 0
 		self.allowMusic = True
 		self.allowSounds = True
+		self.allowCustomColors = True
 		self.paused = False
 		self.newSongWhilePause = False
 		self.interruptingGlobalEffect = False
@@ -829,6 +836,23 @@ class Player(object):
 			self.allowSounds = True
 			self.debugPrint('Sound switched on')
 		self.updateTextFooter()
+
+
+	def toggleAllowCustomColors(self):
+		''' Allow or disallow custom colors. '''
+
+		if self.allowCustomColors:
+			self.colorText = self.COLOR_TEXT
+			self.colorBackground = self.COLOR_BG
+			self.colorEmph = self.COLOR_EMPH
+			self.colorFade = self.COLOR_FADE
+			self.allowCustomColors = True
+		else:
+			self.colorText = self.activeTheme.colorText
+			self.colorBackground = self.activeTheme.colorBackground
+			self.colorEmph = self.activeTheme.colorEmph
+			self.colorFade = self.activeTheme.colorFade
+			self.allowCustomColors = True
 
 
 	def updateTextAll(self):
@@ -1039,9 +1063,14 @@ class Player(object):
 		else:
 			self.showFooterElement(2, 'Space', 'pause', self.colorBackground, self.colorText, self.standardFont)
 
-		self.showFooterElement(3, 'F10', 'redraw screen', self.colorText, self.colorBackground, self.standardFont)
+		if self.allowSounds:
+			self.showFooterElement(3, 'F5', 'custom colors', self.colorText, self.colorBackground, self.standardFont)
+		else:
+			self.showFooterElement(3, 'F5', 'custom colors', self.colorBackground, self.colorText, self.standardFont)
 
-		self.showFooterElement(4, 'Escape', 'quit', self.colorText, self.colorBackground, self.standardFont)
+		self.showFooterElement(4, 'F10', 'redraw screen', self.colorText, self.colorBackground, self.standardFont)
+
+		self.showFooterElement(5, 'Escape', 'quit', self.colorText, self.colorBackground, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -1166,10 +1195,11 @@ class Player(object):
 		self.debugPrint('New theme is {}'.format(self.activeTheme.name))
 
 		# Update colors
-		self.colorText = self.activeTheme.colorText
-		self.colorBackground = self.activeTheme.colorBackground
-		self.colorEmph = self.activeTheme.colorEmph
-		self.colorFade = self.activeTheme.colorFade
+		if self.allowCustomColors:
+			self.colorText = self.activeTheme.colorText
+			self.colorBackground = self.activeTheme.colorBackground
+			self.colorEmph = self.activeTheme.colorEmph
+			self.colorFade = self.activeTheme.colorFade
 
 		# Get sounds and load them into pygame
 		self.activeSounds = copy.deepcopy(self.activeTheme.sounds)
@@ -1238,6 +1268,10 @@ class Player(object):
 					# The F2 key was pressed -> (dis)allow Sounds
 					elif event.key == pygame.K_F2:
 						self.toggleAllowSounds()
+
+					# The F5 key was pressed -> (dis)allow custom colors
+					elif event.key == pygame.K_F5:
+						self.toggleAllowCustomColors()
 
 					# The F10 key was pressed -> force redrawing of the whole screen
 					####### This function is merely a helper function that should not be necessary when the program is mature
