@@ -4,17 +4,17 @@
 # # # #  To do  # # # #
 #
 # Must haves
-# - Global effects must be able to interrupt normal playback
-# - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
 # - Better documentation of the source code. At least a well-describing doc string for every class and method
 #
 # Ideas
 # - Config for individual fonts, colors etc? Could be something like: <config bgcolor="#000000" color="#ff2222" />
 # - Colors, background image, etc. depending on theme (as attribute)?
 # - The screen output could be further improved
+# - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
 #
 # Bugs
 # - Long song/sound names leave a trace at the right end of the screen
+# - Interrupting global effects must be testet in all combinations with the pause/unpause function
 #
 
 from __future__ import generators, division, with_statement, print_function
@@ -593,8 +593,10 @@ class Player(object):
 		pygame.mixer.music.set_endevent(self.SONG_END)
 
 		# Reserve a channel for global sound effects, such that a global sound can always be played
+		self.GLOBAL_END = pygame.USEREVENT + 2
 		pygame.mixer.set_reserved(1)
 		self.globalChannel = pygame.mixer.Channel(0)
+		self.globalChannel.set_endevent(self.GLOBAL_END)
 
 		# Initiate text stuff
 		self.standardFont = pygame.font.Font(None, 24)
@@ -626,12 +628,13 @@ class Player(object):
 		self.activeThemeID = None
 
 		self.cycle = 0
-		self.paused = False
 		self.allowMusic = True
 		self.allowSounds = True
+		self.paused = False
 		self.newSongWhilePause = False
+		self.interruptingGlobalEffect = False
 		self.activeChannels = []
-		self.blockedSounds = {}	# {filename: [playing, cooldown], ...}
+		self.blockedSounds = {}	# {filename: timeToStartAgain, ...}
 
 		# Start visualisation
 		self.updateTextAll()
@@ -641,13 +644,17 @@ class Player(object):
 		''' Pause or unpause music and sounds, depending on the self.paused variable. '''
 
 		if self.paused:
-			pygame.mixer.music.unpause()
-			pygame.mixer.unpause()
 			self.debugPrint('Player unpaused')
 			self.paused = False
-			if self.newSongWhilePause:
-				self.newSongWhilePause = False
-				pygame.mixer.music.play()
+			if self.interruptingGlobalEffect:
+				if not self.globalChannel.get_busy():
+					self.globalChannel.unpause()
+			else:
+				pygame.mixer.music.unpause()
+				pygame.mixer.unpause()
+				if self.newSongWhilePause:
+					self.newSongWhilePause = False
+					pygame.mixer.music.play()
 		else:
 			pygame.mixer.music.pause()
 			pygame.mixer.pause()
@@ -869,8 +876,6 @@ class Player(object):
 
 
 	def playMusic(self, previous = False):
-		##### If only one song is available, it can easily be run in a loop by saying `play(-1)`
-
 		if not self.allowMusic:
 			self.updateTextNowPlaying()
 			return
@@ -887,7 +892,10 @@ class Player(object):
 			if self.paused:
 				self.newSongWhilePause = True
 			else:
-				pygame.mixer.music.play()
+				if len(self.playlist.songs) == 1:
+					pygame.mixer.music.play(-1)
+				else:
+					pygame.mixer.music.play()
 			self.updateTextNowPlaying()
 		else:
 			if not previous and self.activeTheme is not None:
@@ -898,18 +906,32 @@ class Player(object):
 		if self.globalChannel.get_busy():
 			self.debugPrint('Reserved channel is busy! Effect key: {}'.format(chr(effectID)))
 
+		if self.globalEffects[effectID].interrupting:
+			self.interruptingGlobalEffect = True
+			pygame.mixer.music.pause()
+			for c in self.activeChannels:
+				c[1].pause()
+
 		self.activeGlobalEffect = effectID
 		self.globalChannel.play(self.globalEffects[effectID].obj)
 
 		self.updateTextGlobalKeys()
-
-		##### Must consider interrupting effects!
-		##### I must also consider the effects on and of pausing
+		self.updateTextNowPlaying()
 
 
-	def stopGlobalEffect(self):
+	def stopGlobalEffect(self, byEndEvent = False):
 		self.activeGlobalEffect = None
-		self.globalChannel.stop()
+
+		if not byEndEvent:
+			self.globalChannel.stop()
+
+		if not self.paused:
+			pygame.mixer.music.unpause()
+			pygame.mixer.unpause()
+			#for c in self.activeChannels:	###
+			#	c[1].unpause()
+
+		self.interruptingGlobalEffect = False
 		self.updateTextGlobalKeys()
 
 
@@ -969,7 +991,7 @@ class Player(object):
 
 		# remove clutter from the event queue
 		pygame.event.set_allowed(None)
-		pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, self.SONG_END])
+		pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, self.SONG_END, self.GLOBAL_END])
 
 		# Start main loop
 		while True:
@@ -1036,6 +1058,10 @@ class Player(object):
 				# The last song is finished (or a new theme was loaded) -> start new song, if available
 				if event.type == self.SONG_END:
 					self.playMusic()
+
+				# A global effect is finished
+				if event.type == self.GLOBAL_END:
+					self.stopGlobalEffect(byEndEvent = True)
 
 			# Sound effects can be triggered every tenth cycle (about every second).
 			if self.cycle > 10:
