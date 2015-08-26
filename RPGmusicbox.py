@@ -10,10 +10,11 @@
 # - Config for individual fonts, background, etc. for box and themes?
 # - The screen output could be further improved
 # - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
+#   + This could be realized with a <silence prob="50" duration="10-20"> tag in a theme. prob is the probability (in percent) after each song that silence comes and duration is the possible duration of silence in seconds.
 #
 # Bugs
 # - Long song/sound names leave a trace at the right end of the screen
-# - Interrupting global effects must be tested in all combinations with the pause/unpause function
+# - Interrupting global effects must be tested in all combinations with the pause/unpause and allowMusic/Sounds functions
 # - Cooldown time of sounds is not stopped by pausing or interrupting global effects
 #
 
