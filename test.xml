@@ -1,7 +1,7 @@
 <rpgbox>
 	<theme name="Battlestar Galactica" basetime="3600" key="b">
 		<background file="bsg/*.mp3" volume="100" />
-		<effect file="instrumente/*.wav" occurence="100" volume="50" />
+		<effect file="instrumente/*.wav" occurence="100" cooldown="10" volume="50" />
 	</theme>
 
 	<theme name="The Punkles" key="p">

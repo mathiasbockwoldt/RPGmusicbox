@@ -11,7 +11,6 @@
 # Ideas
 # - Config for individual fonts, colors etc? Could be something like: <config bgcolor="#000000" color="#ff2222" />
 # - Colors, background image, etc. depending on theme (as attribute)?
-# - Default starting theme (defined in the xml file)
 # - The screen output could be further improved
 #
 # Bugs
@@ -194,14 +193,16 @@ class Sound(object):
 	Container for a sound
 	'''
 
-	def __init__(self, filename, volume = 100, occurence = 0.01):
+	def __init__(self, filename, name, volume = 100, cooldown = 10, occurence = 0.01):
 		self.filename = str(filename)
+		self.name = str(name)
 		self.volume = int(volume)
+		self.cooldown = float(cooldown)
 		self.occurence = float(occurence)
 
 
 	def __str__(self):
-		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', '{:.4f}'.format(self.occurence), ')'))
+		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', '{:.4f}'.format(self.occurence), ', cd: ', str(self.cooldown), ')'))
 
 
 	# CLASS Sound END
@@ -212,8 +213,9 @@ class Song(object):
 	Container for a song
 	'''
 
-	def __init__(self, filename, volume = 100):
+	def __init__(self, filename, name, volume = 100):
 		self.filename = str(filename)
+		self.name = str(name)
 		self.volume = int(volume)
 
 
@@ -264,6 +266,8 @@ class RPGbox(object):
 	DEFAULT_VOLUME = 100		# Default volume is 100%
 	MIN_VOLUME = 0				# Minimum volume is 0%
 	MAX_VOLUME = 100			# Maximum volume is 100%
+	DEFAULT_COOLDOWN = 10		# Default cooldown is 10 seconds
+	# MIN and MAX cooldown are not defined
 
 
 	def __init__(self, filename):
@@ -399,7 +403,8 @@ class RPGbox(object):
 
 					# Save each song with its volume. If a filename occurs more than once, basically, the volume is updated
 					for songFile in songFiles:
-						self.themes[themeID].addSong(Song(songFile, volume))
+						name = self.prettifyPath(songFile)
+						self.themes[themeID].addSong(Song(songFile, name, volume))
 
 				# <effect> tag found
 				elif subtag.tag == 'effect':
@@ -411,7 +416,7 @@ class RPGbox(object):
 					if not soundFiles:
 						raise NoValidRPGboxError('File {} not found in {}'.format(subtag.attrib['file'], themeName))
 
-					# Get potential volume of the sound. Alter it by the theme volume
+					# Get relative volume of the sound. Alter it by the theme volume
 					try:
 						volume = int(subtag.attrib['volume'])
 					except KeyError:
@@ -425,9 +430,16 @@ class RPGbox(object):
 						occurence = self.DEFAULT_OCCURENCE * basetime
 					occurence = self._ensureOccurence(occurence / basetime)
 
+					# Get cooldown of the sound.
+					try:
+						cooldown = float(subtag.attrib['cooldown'])
+					except KeyError:
+						cooldown = self.DEFAULT_COOLDOWN
+
 					# Save each sound with its volume. If a filename occurs more than once, basically, the volume and occurence are updated
 					for soundFile in soundFiles:
-						self.themes[themeID].addSound(Sound(soundFile, volume))
+						name = self.prettifyPath(soundFile)
+						self.themes[themeID].addSound(Sound(soundFile, name, volume, cooldown))
 						occurences.append(occurences[-1] + occurence)
 
 				# other tag found. We just ignore it.
@@ -461,6 +473,21 @@ class RPGbox(object):
 			ret.append(str(self.globalEffects[e]))
 
 		return '\n'.join(ret)
+
+
+	def prettifyPath(self, path):
+		'''
+		Extracts the filename without extension from path and turns underscores to spaces.
+
+		:param path: String with the full path
+		:returns: The prettified filename
+		'''
+
+		path = os.path.basename(path)
+		path = os.path.splitext(path)[0]
+		path = path.replace('_', ' ')
+
+		return path
 
 
 	def _ensureValidID(self, k):
@@ -506,13 +533,6 @@ class RPGbox(object):
 			return self.MAX_OCCURENCE
 
 		return o
-
-
-	def getDefaultThemeID(self):
-		''' Returns the default theme ID '''
-
-		############## No possibility for default theme, yet!
-		return None
 
 
 	def getIDs(self):
@@ -603,9 +623,7 @@ class Player(object):
 		self.occurences = []
 		self.playlist = Playlist([])
 		self.activeTheme = None
-		self.activeThemeID = self.box.getDefaultThemeID()
-		if self.activeThemeID:
-			self.activateNewTheme(self.activeThemeID)
+		self.activeThemeID = None
 
 		self.cycle = 0
 		self.paused = False
@@ -613,6 +631,7 @@ class Player(object):
 		self.allowSounds = True
 		self.newSongWhilePause = False
 		self.activeChannels = []
+		self.blockedSounds = {}	# {filename: [playing, cooldown], ...}
 
 		# Start visualisation
 		self.updateTextAll()
@@ -643,7 +662,7 @@ class Player(object):
 		if self.allowMusic:
 			self.allowMusic = False
 			pygame.mixer.music.stop()
-			self.playlist.previousSong()	# Necessary to start with the same song, when music is allowed again
+			self.playlist.nowPlaying -= 1	# Necessary to start with the same song, when music is allowed again
 			self.updateTextNowPlaying()
 			self.debugPrint('Music switched off')
 		else:
@@ -674,21 +693,6 @@ class Player(object):
 
 		if self.debug:
 			print(t)
-
-
-	def prettifyPath(self, path):
-		'''
-		Extracts the filename without extension from path and turns underscores to spaces.
-
-		:param path: String with the full path
-		:returns: The prettified filename
-		'''
-
-		path = os.path.basename(path)
-		path = os.path.splitext(path)[0]
-		path = path.replace('_', ' ')
-
-		return path
 
 
 	def updateTextAll(self):
@@ -771,17 +775,17 @@ class Player(object):
 			self.showLine(area, '', self.BLACK, self.standardFont)
 
 			if len(songs) == 1:
-				self.showLine(area, '>> ' + self.prettifyPath(songs[0].filename), self.RED, self.standardFont)
+				self.showLine(area, '>> ' + songs[0].name, self.RED, self.standardFont)
 			elif len(songs) == 2:
 				if songs[0]:
-					self.showLine(area, self.prettifyPath(songs[0].filename), self.RED, self.standardFont)
+					self.showLine(area, songs[0].name, self.RED, self.standardFont)
 				else:
 					self.showLine(area, '', self.BLACK, self.standardFont)
-				self.showLine(area, self.prettifyPath(songs[1].filename), self.BLACK, self.standardFont)
+				self.showLine(area, songs[1].name, self.BLACK, self.standardFont)
 			else:
-				self.showLine(area, self.prettifyPath(songs[0].filename), self.GREY, self.standardFont)
-				self.showLine(area, self.prettifyPath(songs[1].filename), self.RED, self.standardFont)
-				self.showLine(area, self.prettifyPath(songs[2].filename), self.BLACK, self.standardFont)
+				self.showLine(area, songs[0].name, self.GREY, self.standardFont)
+				self.showLine(area, songs[1].name, self.RED, self.standardFont)
+				self.showLine(area, songs[2].name, self.BLACK, self.standardFont)
 
 		if self.activeChannels:
 			toDelete = []
@@ -796,7 +800,13 @@ class Player(object):
 			if self.activeChannels:
 				self.showLine(area, '', self.BLACK, self.standardFont)
 				for c in sorted(self.activeChannels):
-					self.showLine(area, self.prettifyPath(c[0]), self.RED, self.standardFont)
+					self.showLine(area, c[0], self.RED, self.standardFont)
+
+		if self.blockedSounds:
+			now = time.time()
+			for k in self.blockedSounds.keys():
+				if self.blockedSounds[k] < now:
+					del(self.blockedSounds[k])
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -913,9 +923,12 @@ class Player(object):
 			if rand < self.occurences[-1]:
 				for i in range(len(self.occurences)): #### probably replace with bisect, if possible
 					if self.occurences[i] > rand:
+						if self.activeSounds[i].filename in self.blockedSounds:
+							break
 						newSound = self.activeSounds[i]
 						self.debugPrint('Now playing sound {} with volume {}'.format(newSound.filename, newSound.volume))
-						self.activeChannels.append((newSound.filename, newSound.obj.play()))
+						self.activeChannels.append((newSound.name, newSound.obj.play()))
+						self.blockedSounds[newSound.filename] = time.time() + newSound.obj.get_length() + newSound.cooldown
 						break
 		self.updateTextNowPlaying()
 
@@ -1038,11 +1051,11 @@ if __name__ == '__main__':
 	if len(sys.argv) == 2:
 		filename = sys.argv[1]
 	else:
-		filename = 'test.xml'
+		filename = 'test.xml'	### In the mature program, we need a message here
 
 	# change working directory to the xml file's working directory, so that the paths to media are correct
 	os.chdir(os.path.dirname(os.path.realpath(filename)))
-	filename = os.path.basename(filename)
+	filename = os.path.basename(filename)	# The xml file is now at the root of the working directory, so no path is needed anymore
 
 	box = RPGbox(filename)
 
