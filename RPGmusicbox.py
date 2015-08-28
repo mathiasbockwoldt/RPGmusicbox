@@ -8,13 +8,11 @@
 #
 # Ideas
 # - Config for individual fonts, background, etc. for box and themes?
-# - The screen output could be further improved
 # - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
 #   + This could be realized with a <silence prob="50" duration="10-20"> tag in a theme. prob is the probability (in percent) after each song that silence comes and duration is the possible duration of silence in seconds.
 #
 # Bugs
 # - Long song/sound names leave a trace at the right end of the screen
-# - Cooldown time of sounds is not stopped by pausing or interrupting global effects
 #
 
 from __future__ import generators, division, with_statement, print_function
@@ -894,7 +892,8 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textGlobalKeys.fill(self.colorBackground)
+		#self.textGlobalKeys.fill(self.colorBackground) ####
+		self.textGlobalKeys.fill(pygame.Color('#ff00007f'))
 		r = self.background.blit(self.textGlobalKeys, (0, 0))
 
 		area = self.textGlobalKeys.get_rect()
@@ -924,7 +923,8 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textThemeKeys.fill(self.colorBackground)
+		#self.textThemeKeys.fill(self.colorBackground) ####
+		self.textThemeKeys.fill(pygame.Color('#00ff007f'))
 		r = self.background.blit(self.textThemeKeys, (self.displayPanelWidth, 0))
 
 		area = self.textThemeKeys.get_rect()
@@ -954,7 +954,8 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textNowPlaying.fill(self.colorBackground)
+		#self.textNowPlaying.fill(self.colorBackground) ####
+		self.textNowPlaying.fill(pygame.Color('#0000ff7f'))
 		r = self.background.blit(self.textNowPlaying, (2 * self.displayPanelWidth, 0))
 
 		area = self.textNowPlaying.get_rect()
@@ -1249,6 +1250,11 @@ class Player(object):
 				# At least one key was pressed
 				if event.type == pygame.KEYDOWN:
 
+					# Pre-processing: Map numpad keys to normal numbers
+					if 256 <= event.key <= 265:
+						event.key -= 208
+
+
 					# The Escape key was pressed -> quit and return
 					if event.key == pygame.K_ESCAPE:
 						pygame.quit()
@@ -1312,7 +1318,7 @@ class Player(object):
 				self.cycle = 0
 				if self.blockedSounds:
 					for k in self.blockedSounds.keys():
-						self.blockedSounds[k] -= 0
+						self.blockedSounds[k] -= 1
 				self.playSound()
 			self.cycle += 1
 
