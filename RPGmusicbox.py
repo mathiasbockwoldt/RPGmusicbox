@@ -12,7 +12,7 @@
 #   + This could be realized with a <silence prob="50" duration="10-20"> tag in a theme. prob is the probability (in percent) after each song that silence comes and duration is the possible duration of silence in seconds.
 #
 # Bugs
-# - Long song/sound names leave a trace at the right end of the screen
+# - No bugs known :)
 #
 
 from __future__ import generators, division, with_statement, print_function
@@ -20,6 +20,7 @@ from __future__ import generators, division, with_statement, print_function
 import pygame
 import sys
 import os
+import math
 import copy
 import random
 import xml.etree.ElementTree as ET
@@ -729,7 +730,7 @@ class Player(object):
 
 		self.textGlobalKeys = pygame.Surface((self.displayPanelWidth, self.displayPanelHeight))
 		self.textThemeKeys = pygame.Surface((self.displayPanelWidth, self.displayPanelHeight))
-		self.textNowPlaying = pygame.Surface((self.displayPanelWidth, self.displayPanelHeight))
+		self.textNowPlaying = pygame.Surface((self.displayWidth - 2*self.displayPanelWidth, self.displayPanelHeight))	# The displayWidth - 2*panelWidth fills the rounding error pixels on the right side
 		self.textFooter = pygame.Surface((self.displayWidth, self.displayFooterHeight)) # The footer stretches horizontally to 100%. The displayFooterWidth is for the single elements in the footer.
 
 		# Initialize variables
@@ -778,6 +779,18 @@ class Player(object):
 		for e in self.globalEffects:
 			self.globalEffects[e].obj = pygame.mixer.Sound(self.globalEffects[e].filename)
 			self.globalEffects[e].obj.set_volume(self.globalEffects[e].volume)
+
+
+	def toggleDebugOutput(self):
+		''' Allows or disallows debug output to stdout '''
+
+		if self.debug:
+			self.debug = False
+		else:
+			self.debug = True
+			self.debugPrint('Debug printing activated')
+
+		self.updateTextFooter()
 
 
 	def togglePause(self):
@@ -892,8 +905,7 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		#self.textGlobalKeys.fill(self.colorBackground) ####
-		self.textGlobalKeys.fill(pygame.Color('#ff00007f'))
+		self.textGlobalKeys.fill(self.colorBackground)
 		r = self.background.blit(self.textGlobalKeys, (0, 0))
 
 		area = self.textGlobalKeys.get_rect()
@@ -923,8 +935,7 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		#self.textThemeKeys.fill(self.colorBackground) ####
-		self.textThemeKeys.fill(pygame.Color('#00ff007f'))
+		self.textThemeKeys.fill(self.colorBackground)
 		r = self.background.blit(self.textThemeKeys, (self.displayPanelWidth, 0))
 
 		area = self.textThemeKeys.get_rect()
@@ -954,8 +965,7 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		#self.textNowPlaying.fill(self.colorBackground) ####
-		self.textNowPlaying.fill(pygame.Color('#0000ff7f'))
+		self.textNowPlaying.fill(self.colorBackground)
 		r = self.background.blit(self.textNowPlaying, (2 * self.displayPanelWidth, 0))
 
 		area = self.textNowPlaying.get_rect()
@@ -1057,24 +1067,27 @@ class Player(object):
 		if self.allowMusic:
 			self.showFooterElement(0, 'F1', 'allow music', self.colorText, self.colorBackground, self.standardFont)
 		else:
-			self.showFooterElement(0, 'F1', 'allow music', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(0, 'F1', 'disallow music', self.colorBackground, self.colorText, self.standardFont)
 
 		if self.allowSounds:
 			self.showFooterElement(1, 'F2', 'allow sounds', self.colorText, self.colorBackground, self.standardFont)
 		else:
-			self.showFooterElement(1, 'F2', 'allow sounds', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(1, 'F2', 'disallow sounds', self.colorBackground, self.colorText, self.standardFont)
 
 		if not self.paused:
-			self.showFooterElement(2, 'Space', 'pause', self.colorText, self.colorBackground, self.standardFont)
+			self.showFooterElement(2, 'Space', 'unpaused', self.colorText, self.colorBackground, self.standardFont)
 		else:
-			self.showFooterElement(2, 'Space', 'pause', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(2, 'Space', 'paused', self.colorBackground, self.colorText, self.standardFont)
 
 		if self.allowCustomColors:
 			self.showFooterElement(3, 'F5', 'custom colors', self.colorText, self.colorBackground, self.standardFont)
 		else:
-			self.showFooterElement(3, 'F5', 'custom colors', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(3, 'F5', 'standard colors', self.colorBackground, self.colorText, self.standardFont)
 
-		self.showFooterElement(4, 'F10', 'redraw screen', self.colorText, self.colorBackground, self.standardFont)
+		if not self.debug:
+			self.showFooterElement(4, 'F10', 'no debug output', self.colorText, self.colorBackground, self.standardFont)
+		else:
+			self.showFooterElement(4, 'F10', 'debug output', self.colorBackground, self.colorText, self.standardFont)
 
 		self.showFooterElement(5, 'Escape', 'quit', self.colorText, self.colorBackground, self.standardFont)
 
@@ -1136,6 +1149,8 @@ class Player(object):
 		self.activeGlobalEffect = effectID
 		self.globalChannel.play(self.globalEffects[effectID].obj)
 
+		self.debugPrint('Now playing {}'.format(self.globalEffects[effectID].name))
+
 		self.updateTextGlobalEffects()
 		self.updateTextNowPlaying()
 
@@ -1158,6 +1173,8 @@ class Player(object):
 			pygame.mixer.unpause()
 			#for c in self.activeChannels:	###
 			#	c[1].unpause()
+
+		self.debugPrint('Now stopping last global effect.')
 
 		self.interruptingGlobalEffect = False
 		self.updateTextGlobalEffects()
@@ -1284,10 +1301,9 @@ class Player(object):
 					elif event.key == pygame.K_F5:
 						self.toggleAllowCustomColors()
 
-					# The F10 key was pressed -> force redrawing of the whole screen
-					####### This function is merely a helper function that should not be necessary when the program is mature
+					# The F10 key was pressed -> do (not) print debug info to stdout
 					elif event.key == pygame.K_F10:
-						self.updateTextAll()
+						self.toggleDebugOutput()
 
 					# The key is the key of the active theme -> do nothing
 					elif event.key == self.activeThemeID:
