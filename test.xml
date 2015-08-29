@@ -1,11 +1,13 @@
 <rpgbox>
+	<config textcolor="white" bgcolor="#169010" emphcolor="#ff9600" fadecolor="black" />
+
 	<theme name="Battlestar Galactica" basetime="3600" key="b">
 		<background file="bsg/*.mp3" volume="100" />
 		<effect file="instrumente/*.wav" occurence="100" cooldown="10" volume="50" />
 	</theme>
 
 	<theme name="The Punkles" key="p">
-		<config textcolor="white" bgcolor="#169010" emphcolor="#ff9600" fadecolor="black" />
+		<config textcolor="white" bgcolor="#169010" fadecolor="black" />
 		<background file="punkles/*.mp3" />
 		<effect file="voegel/*.wav" occurence="10" />
 	</theme>

@@ -7,7 +7,7 @@
 # - Provide example "box" with songs and sounds and global effects in the public domain
 #
 # Ideas
-# - Config for individual fonts, background, etc. for box and themes?
+# - Config for individual fonts, background image, etc. for box and themes?
 # - Allow for "silence" instead of background music (also in addition to background music -> music - 2 min silence - music)
 #   + This could be realized with a <silence prob="50" duration="10-20"> tag in a theme. prob is the probability (in percent) after each song that silence comes and duration is the possible duration of silence in seconds.
 #
@@ -77,10 +77,11 @@ class Playlist(object):
 			self.playlist.extend(newSonglist)
 
 
-	def _shortenPlaylist(self):
-		''' Cuts away parts in the beginning of the playlist to save memory '''
-
-		pass ############ (Do I ever need this? Memory consumption of the list is low anyway...)
+	# I don't need this function until now. If playlists get too long, it would be a good idea to write this function
+	#def _shortenPlaylist(self):
+	#	''' Cuts away parts in the beginning of the playlist to save memory '''
+	#
+	#	pass
 
 
 	def nextSong(self):
@@ -459,10 +460,25 @@ class RPGbox(object):
 			# If a config is given, read it. If not, use default values.
 			try:
 				config = next(theme.iter('config'))
-				colorText = pygame.Color(config.get('textcolor', default = self.colorText))
-				colorBackground = pygame.Color(config.get('bgcolor', default = self.colorBackground))
-				colorEmph = pygame.Color(config.get('emphcolor', default = self.colorEmph))
-				colorFade = pygame.Color(config.get('fadecolor', default = self.colorFade))
+				try:
+					colorText = pygame.Color(config.attrib['textcolor'])
+				except KeyError:
+					colorText = self.colorText
+
+				try:
+					colorBackground = pygame.Color(config.attrib['bgcolor'])
+				except KeyError:
+					colorBackground = self.colorBackground
+
+				try:
+					colorEmph = pygame.Color(config.attrib['emphcolor'])
+				except KeyError:
+					colorEmph = self.colorEmph
+
+				try:
+					colorFade = pygame.Color(config.attrib['fadecolor'])
+				except KeyError:
+					colorFade = self.colorFade
 			except StopIteration:
 				colorText = self.colorText
 				colorBackground = self.colorBackground
@@ -675,7 +691,7 @@ class Player(object):
 	COLOR_EMPH = (200, 0, 0)		# Emphasizing color: red
 	COLOR_FADE = (127, 127, 127)	# Fading color: grey
 
-	def __init__(self, box, debug = True):
+	def __init__(self, box, debug = False):
 		'''
 		Initiates all necessary stuff for playing an RPGbox.
 
@@ -1171,8 +1187,6 @@ class Player(object):
 		if not self.paused:
 			pygame.mixer.music.unpause()
 			pygame.mixer.unpause()
-			#for c in self.activeChannels:	###
-			#	c[1].unpause()
 
 		self.debugPrint('Now stopping last global effect.')
 
@@ -1193,7 +1207,7 @@ class Player(object):
 		if not self.paused and self.activeSounds and pygame.mixer.find_channel() is not None:
 			rand = random.random()
 			if rand < self.occurences[-1]:
-				for i in range(len(self.occurences)): #### probably replace with bisect, if possible
+				for i in range(len(self.occurences)): # This could be done with bisect, (data is sorted), but it's probably not worth the effort, because the number so sounds will be low, anyway.
 					if self.occurences[i] > rand:
 						if self.activeSounds[i].filename in self.blockedSounds:
 							break
@@ -1346,7 +1360,16 @@ if __name__ == '__main__':
 	if len(sys.argv) == 2:
 		filename = sys.argv[1]
 	else:
-		filename = 'test.xml'	### In the mature program, we need a message here
+		print('RPGmusicbox\nPlease call me like:')
+		if os.name == 'nt':
+			print('python {} path\\to\\file.xml'.format(sys.argv[0]))
+		else:
+			if sys.argv[0][0] == '.':
+				print('{} path/to/file.xml'.format(sys.argv[0]))
+			else:
+				print('python {} path/to/file.xml'.format(sys.argv[0]))
+		print('See readme.md for details.')
+		sys.exit()
 
 	# change working directory to the xml file's working directory, so that the paths to media are correct
 	os.chdir(os.path.dirname(os.path.realpath(filename)))
