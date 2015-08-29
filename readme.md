@@ -32,7 +32,7 @@ The XML file contains information about all music, background noises, sound effe
 
 ```xml
 <rpgbox>
-	<config textcolor="black" bgcolor="white" emphcolor="#c80000" fadecolor="(127, 127, 127)" />
+	<config textcolor="black" bgcolor="white" emphcolor="#c80000" fadecolor="#7f7f7f" />
 
 	<theme key="t" name="The first theme" basetime="3600" volume="100" default="default">
 		<config textcolor="white" bgcolor="#169010" emphcolor="#ff9600" fadecolor="black" />
@@ -57,7 +57,7 @@ All tags and attributes *must* be in lowercase. Indentation and empty lines don'
 
 The contents of every RPGbox xml file must be contained in `<rpgbox>...</rpgbox>`.
 
-Basic colors may be defined with a `<config>` tag. The colors may be given in common names, hex notation (`#rrggbb`) or a tuple with three numbers from 0 to 255 that represent the red, green, and blue channel (`(0, 255, 134)`). With `textcolor` the text color is changed. `bgcolor` is responsible for the background. `emphcolor` is used for emphasizing text and `fadecolor` for fading text. The values in the example are the default values if no `<config>` is given.
+Basic colors may be defined with a `<config>` tag. The colors may be given in common names or hex notation (`#rrggbb`). With `textcolor` the text color is changed. `bgcolor` is responsible for the background. `emphcolor` is used for emphasizing text and `fadecolor` for fading text. The values in the example are the default values if no `<config>` is given.
 
 Every theme starts with a `<theme>` tag that *must* have a `name` and a `key` attribute. Optionally, every theme can have a `basetime` and a base `volume`. The `name` is shown on the screen (in case you look at it). The `key` is the keyboard key (a-z, 0-9) that you want to press while in game to start this theme. The `basetime` is a reference time in seconds. The default value is 3600 seconds or one hour. It must be in range 1 to 36000 (one second to ten hours). See below at `<effect>` for more info on this attribute. The `volume` is the basic volume of the whole theme in percent. Default is 100 and it must be in range 0 to 100. Optionally, a theme may be set to `default`. If there is a `default` attribute this theme will be started directly, when the script starts. The text of the `default` attribute is irrelevant, it is just there to comply with the xml standard.
 
