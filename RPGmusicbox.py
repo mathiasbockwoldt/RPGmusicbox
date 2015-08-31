@@ -23,6 +23,7 @@ import os
 import math
 import copy
 import random
+import bisect
 import xml.etree.ElementTree as ET
 from glob import glob
 
@@ -1199,6 +1200,20 @@ class Player(object):
 		Plays a random sound and adds its channel to the activeChannels list.
 		'''
 
+		def findSound(a, x):
+			'''
+			Find leftmost value greater than x using bisect
+
+			:param a: A sorted list with elements
+			:param x: The element to look for
+			:returns: The index of the leftmost element greater than x or None, if x is greater than the rightmost element
+			'''
+
+			i = bisect.bisect_right(a, x)
+			if i != len(a):
+				return i
+			return None
+
 		# If sounds are not allowed, update the now playing panel and do nothing more
 		if not self.allowSounds:
 			self.updateTextNowPlaying()
@@ -1207,15 +1222,12 @@ class Player(object):
 		if not self.paused and self.activeSounds and pygame.mixer.find_channel() is not None:
 			rand = random.random()
 			if rand < self.occurences[-1]:
-				for i in range(len(self.occurences)): # This could be done with bisect, (data is sorted), but it's probably not worth the effort, because the number so sounds will be low, anyway.
-					if self.occurences[i] > rand:
-						if self.activeSounds[i].filename in self.blockedSounds:
-							break
-						newSound = self.activeSounds[i]
-						self.debugPrint('Now playing sound {} with volume {}'.format(newSound.filename, newSound.volume))
-						self.activeChannels.append((newSound.name, newSound.obj.play()))
-						self.blockedSounds[newSound.filename] = newSound.obj.get_length() + newSound.cooldown
-						break
+				i = findSound(self.occurences, rand)
+				if i is not None and self.activeSounds[i].filename not in self.blockedSounds:
+					newSound = self.activeSounds[i]
+					self.debugPrint('Now playing sound {} with volume {}'.format(newSound.filename, newSound.volume))
+					self.activeChannels.append((newSound.name, newSound.obj.play()))
+					self.blockedSounds[newSound.filename] = newSound.obj.get_length() + newSound.cooldown
 		self.updateTextNowPlaying()
 
 
