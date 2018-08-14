@@ -1,0 +1,11 @@
+bsg/
+dsa/
+example/
+globals/
+instrumente/
+punkles/
+strand/
+voegel/
+
+ambient-mixer
+*.pyc
