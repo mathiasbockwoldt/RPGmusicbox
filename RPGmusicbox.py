@@ -12,7 +12,7 @@
 #   + This could be realized with a <silence prob="50" duration="10-20"> tag in a theme. prob is the probability (in percent) after each song that silence comes and duration is the possible duration of silence in seconds.
 #
 # Bugs
-# - No bugs known :)
+# - None known :)
 #
 
 from __future__ import generators, division, with_statement, print_function
@@ -146,7 +146,7 @@ class Theme(object):
 	Container for one theme including its songs and sounds.
 	'''
 
-	def __init__(self, key, name, colorText, colorBackground, colorEmph, colorFade, songs = [], sounds = [], occurences = []):
+	def __init__(self, key, name, colorText, colorBackground, colorEmph, colorFade, songs = None, sounds = None, occurences = None):
 		'''
 		Initiates the theme.
 
@@ -164,9 +164,20 @@ class Theme(object):
 		self.key = str(key)[0]
 		self.name = str(name)
 
-		self.songs = songs[:]
-		self.sounds = sounds[:]
-		self.occurences = occurences[:]
+		if songs is None:
+			self.songs = []
+		else:
+			self.songs = songs[:]
+
+		if sounds is None:
+			self.sounds = []
+		else:
+			self.sounds = sounds[:]
+
+		if occurences is None:
+			self.occurences = []
+		else:
+			self.occurences = occurences[:]
 
 		self.colorText = colorText
 		self.colorBackground = colorBackground
@@ -193,7 +204,7 @@ class Theme(object):
 		'''
 		Add a song to the theme.
 
-		:param song: The song to add
+		:param song: The Song object to add
 		'''
 
 		self.songs.append(song)
@@ -203,7 +214,7 @@ class Theme(object):
 		'''
 		Add a sound to the theme
 
-		:param sound: The sound to add
+		:param sound: The Sound object to add
 		'''
 
 		self.sounds.append(sound)
@@ -234,28 +245,32 @@ class Sound(object):
 	Container for one sound.
 	'''
 
-	def __init__(self, filename, name, volume = 100, cooldown = 10, occurence = 0.01):
+	def __init__(self, filename, name, volume = 1, cooldown = 10, occurence = 0.01, loop = False):
 		'''
 		Initiates the sound.
 
 		:param filename: String with the filename
 		:param name: String with the name
-		:param volume: Integer with the relative volume (already adjusted by the theme volume)
+		:param volume: Float with the relative volume (already adjusted by the theme volume)
 		:param cooldown: Float with the cooldown time in seconds
 		:param occurence: Float with relative occururence (already adjusted by the theme basetime)
+		:param loop: Boolean whether the sound shall be played indefinitely or not. `occurence` is disregarded when loop is True.
 		'''
 
 		self.filename = str(filename)
 		self.name = str(name)
-		self.volume = int(volume)
+		self.volume = float(volume)
 		self.cooldown = float(cooldown)
 		self.occurence = float(occurence)
+		self.loop = bool(loop)
+		if self.loop:
+			self.occurence = 0.01
 
 
 	def __str__(self):
 		''' :returns: A string representation of the sound with all attributes. '''
 
-		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', '{:.4f}'.format(self.occurence), ', cd: ', str(self.cooldown), ')'))
+		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', '{:.4f}'.format(self.occurence), ', cd: ', str(self.cooldown), ', loop: ', str(self.loop), ')'))
 
 
 	# CLASS Sound END
@@ -266,18 +281,18 @@ class Song(object):
 	Container for one song.
 	'''
 
-	def __init__(self, filename, name, volume = 100):
+	def __init__(self, filename, name, volume = 1):
 		'''
 		Initiates the song.
 
 		:param filename: String with the filename
 		:param name: String with the name
-		:param volume: Integer with the relative volume (already adjusted by the theme volume)
+		:param volume: Float with the relative volume (already adjusted by the theme volume)
 		'''
 
 		self.filename = str(filename)
 		self.name = str(name)
-		self.volume = int(volume)
+		self.volume = float(volume)
 
 
 	def __str__(self):
@@ -294,21 +309,21 @@ class GlobalEffect(object):
 	Container for one global effect.
 	'''
 
-	def __init__(self, filename, key, name, volume = 100, interrupting = True):
+	def __init__(self, filename, key, name, volume = 1, interrupting = True):
 		'''
 		Initiates the global effect.
 
 		:param filename: String with the filename
 		:param key: The keyboard key to activate the global effect. Must be a one-letter string.
 		:param name: String with the name
-		:param volume: Integer with the relative volume (already adjusted by the theme volume)
+		:param volume: Float with the relative volume (already adjusted by the theme volume)
 		:param interrupting: Boolean that indicates, whether the global effect should interrupt playing music and sounds, or not.
 		'''
 
 		self.filename = str(filename)
 		self.key = str(key)[0]
 		self.name = str(name)
-		self.volume = int(volume)
+		self.volume = float(volume)
 		self.interrupting = bool(interrupting)
 
 
@@ -338,17 +353,17 @@ class RPGbox(object):
 	DEFAULT_OCCURENCE = 0.01	# Default occurence is 0.01 (1% of basetime)
 	MIN_OCCURENCE = 0			# Minimum occurence is 0 (never)
 	MAX_OCCURENCE = 1			# Maximum occurence is 1 (always)
-	DEFAULT_VOLUME = 100		# Default volume is 100%
+	DEFAULT_VOLUME = 100		# Default volume is 100% (100)
 	MIN_VOLUME = 0				# Minimum volume is 0%
-	MAX_VOLUME = 100			# Maximum volume is 100%
+	MAX_VOLUME = 1				# Maximum volume is 100% (1.0)
 	DEFAULT_COOLDOWN = 10		# Default cooldown is 10 seconds
 	# MIN and MAX cooldown are not defined, as they are not needed
 
 	# Default colors
-	COLOR_TEXT = (0, 0, 0)			# Text color: black
-	COLOR_BG = (255, 255, 255)		# Background color: white
-	COLOR_EMPH = (200, 0, 0)		# Emphasizing color: red
-	COLOR_FADE = (127, 127, 127)	# Fading color: grey
+	COLOR_TEXT = '#000000'			# Text color: black
+	COLOR_BG = '#ffffff'			# Background color: white
+	COLOR_EMPH = '#c80000'			# Emphasizing color: red
+	COLOR_FADE = '#7f7f7f'			# Fading color: grey
 
 
 	def __init__(self, filename):
@@ -387,8 +402,7 @@ class RPGbox(object):
 		for globalTag in root.iter('globals'):
 			# Get the globals volume. If not available, use default volume. If outside margins, set to margins.
 			# The globals volume is eventually not saved but directly taken account of for each sound effect and music
-			globalsVolume = int(globalTag.get('volume', default = self.DEFAULT_VOLUME))
-			globalsVolume = self._ensureVolume(globalsVolume)
+			globalsVolume = int(globalTag.get('volume', default = self.DEFAULT_VOLUME)) / 100.0
 
 			for effect in globalTag.iter('effect'):
 				# Get name of the global effect (each global effect must have a name!)
@@ -419,11 +433,11 @@ class RPGbox(object):
 					raise NoValidRPGboxError('File {} not found in global.'.format(effect.attrib['file']))
 
 				# Get potential volume of the effect. Alter it by the globals volume
-				effectVolume = int(effect.get('volume', default = self.DEFAULT_VOLUME))
-				effectVolume = self._ensureVolume(int(effectVolume * globalsVolume / 100))
+				effectVolume = int(effect.get('volume', default = self.DEFAULT_VOLUME)) / 100.0
+				effectVolume = self._ensureVolume(effectVolume * globalsVolume)
 
 				# Check, whether the effect should interrupt everything else
-				interrupting = ('interrupting' in effect.attrib)
+				interrupting = ('interrupting' in effect.attrib and self._interpretBool(effect.attrib['interrupting']))
 
 				# Save the global effect
 				self.globalEffects[effectID] = GlobalEffect(filename = effectFile, key = effectKey, name = effectName, volume = effectVolume, interrupting = interrupting)
@@ -448,10 +462,9 @@ class RPGbox(object):
 			except KeyError:
 				raise NoValidRPGboxError('A theme without name was found. Each theme must have a name!')
 
-			# Get the theme volume. If not available, use default volume. If outside margins, set to margins.
+			# Get the theme volume. If not available, use default volume.
 			# The theme volume is eventually not saved but directly taken account of for each sound effect and music
-			themeVolume = int(theme.get('volume', default = self.DEFAULT_VOLUME))
-			themeVolume = self._ensureVolume(themeVolume)
+			themeVolume = int(theme.get('volume', default = self.DEFAULT_VOLUME)) / 100.0
 
 			# Read theme basetime (How often soundeffects appear)
 			# The basetime is eventually not saved but directly taken account of for each sound effect
@@ -505,8 +518,8 @@ class RPGbox(object):
 						raise NoValidRPGboxError('File {} not found in {}'.format(subtag.attrib['file'], themeName))
 
 					# Get potential volume of song. Alter it by the theme volume
-					volume = int(subtag.get('volume', default = self.DEFAULT_VOLUME))
-					volume = self._ensureVolume(int(volume * themeVolume / 100))
+					volume = int(subtag.get('volume', default = self.DEFAULT_VOLUME)) / 100.0
+					volume = self._ensureVolume(volume * themeVolume)
 
 					# Save each song with its volume. If a filename occurs more than once, basically, the volume is updated
 					for songFile in songFiles:
@@ -524,8 +537,8 @@ class RPGbox(object):
 						raise NoValidRPGboxError('File {} not found in {}'.format(subtag.attrib['file'], themeName))
 
 					# Get relative volume of the sound. Alter it by the theme volume
-					volume = int(subtag.get('volume', default = self.DEFAULT_VOLUME))
-					volume = self._ensureVolume(int(volume * themeVolume / 100))
+					volume = int(subtag.get('volume', default = self.DEFAULT_VOLUME)) / 100.0
+					volume = self._ensureVolume(volume * themeVolume)
 
 					# Get occurence of the sound. Alter it by the theme basetime
 					occurence = int(subtag.get('occurence', default = self.DEFAULT_OCCURENCE * basetime))
@@ -534,10 +547,13 @@ class RPGbox(object):
 					# Get cooldown of the sound.
 					cooldown = float(subtag.get('cooldown', default = self.DEFAULT_COOLDOWN))
 
+					# Check, whether the effect should run indefinitely (i.e. it should loop)
+					loop = ('loop' in subtag.attrib and self._interpretBool(subtag.attrib['loop']))
+
 					# Save each sound with its volume. If a filename occurs more than once, basically, the volume and occurence are updated
 					for soundFile in soundFiles:
 						name = self.prettifyPath(soundFile)
-						self.themes[themeID].addSound(Sound(soundFile, name, volume, cooldown))
+						self.themes[themeID].addSound(Sound(soundFile, name=name, volume=volume, cooldown=cooldown, loop=loop))
 						occurences.append(occurences[-1] + occurence)
 
 				# config tag found. That was already analysed, so we just ignore it silently
@@ -546,7 +562,7 @@ class RPGbox(object):
 
 				# other tag found. We just ignore it.
 				else:
-					print('Unknown Tag {}. Ignoring.'.format(attr.tag), file=sys.stderr)
+					print('Unknown Tag {}. Ignoring it.'.format(attr.tag), file=sys.stderr)
 
 			# Ensure, that all sounds CAN be played. If the sum of occurences is higher than one, normalize to one
 			if occurences[-1] > self.MAX_OCCURENCE:
@@ -619,6 +635,17 @@ class RPGbox(object):
 			return self.MAX_VOLUME
 
 		return v
+
+
+	def _interpretBool(self, s):
+		'''
+		Interprets whether a string is "falsy" or "truthy"
+
+		:param s: The sting to be interpreted
+		:returns: True or False depending on the string
+		'''
+
+		return s.lower() in {'yes', 'y', 'true', '1', 'on'}
 
 
 	def _ensureBasetime(self, b):
@@ -910,7 +937,7 @@ class Player(object):
 		:param font: The font object that shall be rendered
 		'''
 
-		textRect = font.render(t, True, color)
+		textRect = font.render(t.decode('UTF-8'), True, color)
 		self.background.blit(textRect, area)
 		area.top += font.get_linesize()
 
@@ -1012,7 +1039,7 @@ class Player(object):
 		if self.activeChannels:
 			toDelete = []
 			for i in range(len(self.activeChannels)):
-				if not self.activeChannels[i][1].get_busy():
+				if self.activeChannels[i][1] is None or not self.activeChannels[i][1].get_busy():
 					toDelete.append(i)
 
 			for i in toDelete[::-1]:
@@ -1021,8 +1048,8 @@ class Player(object):
 			# all members may have been deleted, that's why here is a new `if`
 			if self.activeChannels:
 				self.showLine(area, '', self.colorText, self.standardFont)
-				for c in sorted(self.activeChannels):
-					self.showLine(area, c[0], self.colorEmph, self.standardFont)
+				for name, c in sorted(self.activeChannels):
+					self.showLine(area, name, self.colorEmph, self.standardFont)
 
 		if self.blockedSounds:
 			for k in self.blockedSounds.keys():
@@ -1133,7 +1160,7 @@ class Player(object):
 		if nextSong is not None:
 			self.debugPrint('Now playing {} with volume {}'.format(nextSong.filename, nextSong.volume))
 			pygame.mixer.music.load(nextSong.filename)
-			pygame.mixer.music.set_volume(nextSong.volume / 100.0)
+			pygame.mixer.music.set_volume(nextSong.volume)
 			if self.paused:
 				self.newSongWhilePause = True
 			else:
@@ -1143,6 +1170,7 @@ class Player(object):
 					pygame.mixer.music.play()
 			self.updateTextNowPlaying()
 		else:
+			pygame.mixer.music.stop()
 			if not previous and self.activeTheme is not None:
 				self.debugPrint('No music available in theme {}'.format(self.activeTheme.name))
 
@@ -1155,13 +1183,14 @@ class Player(object):
 		'''
 
 		if self.globalChannel.get_busy():
-			self.debugPrint('Reserved channel is busy! Effect key: {}'.format(chr(effectID)))
+			self.debugPrint('Reserved channel is busy! Active key is {}'.format(chr(self.activeGlobalEffect)))
+			return
 
 		if self.globalEffects[effectID].interrupting:
 			self.interruptingGlobalEffect = True
 			pygame.mixer.music.pause()
-			for c in self.activeChannels:
-				c[1].pause()
+			for name, channel in self.activeChannels:
+				channel.pause()
 
 		self.activeGlobalEffect = effectID
 		self.globalChannel.play(self.globalEffects[effectID].obj)
@@ -1179,6 +1208,9 @@ class Player(object):
 
 		:param byEndEvent: If True, this function is called, because the global effect stopped.
 		'''
+
+		if self.activeGlobalEffect is None:
+			return
 
 		self.activeGlobalEffect = None
 
@@ -1219,7 +1251,7 @@ class Player(object):
 			self.updateTextNowPlaying()
 			return
 
-		if not self.paused and self.activeSounds and pygame.mixer.find_channel() is not None:
+		if not self.paused and not self.activeGlobalEffect and self.activeSounds and pygame.mixer.find_channel() is not None:
 			rand = random.random()
 			if rand < self.occurences[-1]:
 				i = findSound(self.occurences, rand)
@@ -1250,11 +1282,15 @@ class Player(object):
 			self.colorEmph = self.activeTheme.colorEmph
 			self.colorFade = self.activeTheme.colorFade
 
+		loopedSounds = []
+
 		# Get sounds and load them into pygame
 		self.activeSounds = copy.deepcopy(self.activeTheme.sounds)
 		for i in range(len(self.activeSounds)):
 			self.activeSounds[i].obj = pygame.mixer.Sound(self.activeSounds[i].filename)
 			self.activeSounds[i].obj.set_volume(self.activeSounds[i].volume)
+			if self.activeSounds[i].loop:
+				loopedSounds.append(i)
 
 		self.playlist = Playlist(self.activeTheme.songs)
 
@@ -1264,6 +1300,42 @@ class Player(object):
 		pygame.event.post(pygame.event.Event(self.SONG_END))
 
 		pygame.mixer.stop()	# Stop all playing sounds
+
+		# Start all sounds that shall be looped
+		for i in loopedSounds:
+			newSound = self.activeSounds[i]
+			self.activeChannels.append(('>> ' + newSound.name, newSound.obj.play(loops = -1)))
+			self.blockedSounds[newSound.filename] = 604800 # one week
+
+		self.updateTextAll()
+
+
+	def deactivateTheme(self):
+		'''
+		Deactivates a theme. All sounds of that theme are discarded. The playlist is emptied. All running sounds and music are stopped.
+		'''
+
+		self.debugPrint('Theme {} was deactivated'.format(self.activeTheme.name))
+
+		self.activeTheme = None
+		self.activeThemeID = None
+
+		# Update colors
+		if self.allowCustomColors:
+			self.colorText = self.box.colorText
+			self.colorBackground = self.box.colorBackground
+			self.colorEmph = self.box.colorEmph
+			self.colorFade = self.box.colorFade
+
+		for name, channel in self.activeChannels:
+			channel.stop()
+
+		self.activeSounds = []
+		self.occurences = []
+		self.playlist = Playlist([])
+
+		#pygame.mixer.stop()	# Stop all playing sounds
+		pygame.mixer.music.stop() # Stop all music
 
 		self.updateTextAll()
 
@@ -1331,9 +1403,9 @@ class Player(object):
 					elif event.key == pygame.K_F10:
 						self.toggleDebugOutput()
 
-					# The key is the key of the active theme -> do nothing
+					# The key is the key of the active theme -> deactivate theme (become silent)
 					elif event.key == self.activeThemeID:
-						pass
+						self.deactivateTheme()
 
 					# The key is the key of the active global effect -> stop it
 					elif event.key == self.activeGlobalEffect:
@@ -1388,8 +1460,6 @@ if __name__ == '__main__':
 	filename = os.path.basename(filename)	# The xml file is now at the root of the working directory, so no path is needed anymore
 
 	box = RPGbox(filename)
-
-	#print(box)
 
 	player = Player(box)
 	player.start()
