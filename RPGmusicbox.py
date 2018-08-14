@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-#-*- coding:utf-8 -*-
+#!/usr/bin/env python3
 
 # # # #  To do  # # # #
 #
@@ -15,7 +14,6 @@
 # - None known :)
 #
 
-from __future__ import generators, division, with_statement, print_function
 
 import pygame
 import sys
@@ -937,7 +935,7 @@ class Player(object):
 		:param font: The font object that shall be rendered
 		'''
 
-		textRect = font.render(t.decode('UTF-8'), True, color)
+		textRect = font.render(t, True, color)
 		self.background.blit(textRect, area)
 		area.top += font.get_linesize()
 

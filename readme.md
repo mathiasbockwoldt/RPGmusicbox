@@ -13,10 +13,8 @@ At the gaming table, you set up the computer with speakers and a keyboard. No mo
 Dependencies
 ------------
 
-RPGbox is written in Python 2, but it is ready to be opened with Python 3 as well. The script needs Pygame, which is currently more stable with Python 2.
-
-- Python: http://www.python.org
-- Pygame: http://www.pygame.org/download.shtml or newer versions: https://bitbucket.org/pygame/pygame/downloads
+- Python 3: http://www.python.org
+- Pygame: http://www.pygame.org/download.shtml
 
 
 Supported media files
