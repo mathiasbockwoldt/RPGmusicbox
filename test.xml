@@ -1,18 +1,21 @@
 <rpgbox>
-	<config textcolor="white" bgcolor="#169010" emphcolor="#ff9600" fadecolor="black" />
+	<config textcolor="black" bgcolor="white" emphcolor="#c80000" fadecolor="#7f7f7f" />
 
-	<theme name="Battlestar Galactica" basetime="3600" key="b">
-		<background file="bsg/*.mp3" volume="100" />
-		<effect file="instrumente/*.wav" occurence="100" cooldown="10" volume="50" />
+	<theme key="t" name="The first theme" basetime="3600" volume="100" default="default">
+		<config textcolor="white" bgcolor="#169010" emphcolor="#ff9600" fadecolor="black" />
+		<background file="theme1/*.mp3" volume="100" />
+		<background file="theme1/veryLoudFile.mp3" volume="75" />
+		<background file="generalStuff/niceBG?.mp3" />
+		<effect file="theme1/*.ogg" occurence="10" />
+		<effect file="theme1/playThisOften.wav" occurence="120" volume="90" />
+		<effect file="theme1/playThisInLoop.wav" occurence="3600" volume="50" loop="true" />
 	</theme>
 
-	<theme name="The Punkles" key="p">
-		<config textcolor="white" bgcolor="#169010" fadecolor="black" />
-		<background file="punkles/*.mp3" />
-		<effect file="voegel/*.wav" occurence="10" />
+	<theme name="Jungle" key="j">
+		<background file="generalStuff/jungle.mp3" />
 	</theme>
 
-	<globals>
-		<effect file="globals/jeopardy.ogg" name="Jeopardy Theme" key="1" volume="100" interrupting="yes" />
+	<globals volume="100">
+		<global file="generalStuff/jeopardy.ogg" key="1" name="Jeopardy Thinking Music" volume="100" interrupting="yes" />
 	</globals>
 </rpgbox>
