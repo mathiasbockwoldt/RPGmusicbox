@@ -13,7 +13,7 @@ At the gaming table, you set up the computer with speakers and a keyboard. No mo
 Dependencies
 ------------
 
-- Python 3: http://www.python.org
+- Python 3: https://www.python.org
 - Pygame: http://www.pygame.org/download.shtml
 
 
@@ -95,9 +95,9 @@ In addition to free online sources, you may also look for soundtracks. Movie sou
 
 Here are some suggestions of free sources on the net.
 
-- [Tabletop Audio](http://tabletopaudio.com) offers ten minute pieces for table top games with different atmospheres that can of course also be used for role-playing games.
+- [Tabletop Audio](https://tabletopaudio.com) offers ten minute pieces for table top games with different atmospheres that can of course also be used for role-playing games.
 
-- [Kingdom Hearts Insider](http://downloads.khinsider.com) has a large database of computer game soundtracks that can be downloaded.
+- [Kingdom Hearts Insider](https://downloads.khinsider.com) has a large database of computer game soundtracks that can be downloaded.
 
 - [Game Theme Songs](http://www.gamethemesongs.com) also has many, many game songs.
 
@@ -107,9 +107,9 @@ Take care when you want to use prominent soundtracks for gaming. It can create a
 Similar programs
 ----------------
 
-- In addtion to the abovementioned background tracks, [Tabletop Audio](http://tabletopaudio.com) also offers a sound pad with some preconfigured sets.
+- In addtion to the abovementioned background tracks, [Tabletop Audio](https://tabletopaudio.com) also offers a sound pad with some preconfigured sets.
 
-- <http://www.ambient-mixer.com>
+- [ambient-mixer.com](https://www.ambient-mixer.com)
 
 
 Bugs and things that are planned to do
