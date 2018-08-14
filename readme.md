@@ -13,7 +13,7 @@ At the gaming table, you set up the computer with speakers and a keyboard. No mo
 Dependencies
 ------------
 
-RPGbox is written in Python 2, but it is ready to be opened with Python 3 as well. The script needs Pygame, which is currently more stable with Python 2. If you installed Pygame for Python 3, you can run the script with Python 3 as well.
+RPGbox is written in Python 2, but it is ready to be opened with Python 3 as well. The script needs Pygame, which is currently more stable with Python 2.
 
 - Python: http://www.python.org
 - Pygame: http://www.pygame.org/download.shtml or newer versions: https://bitbucket.org/pygame/pygame/downloads
@@ -41,6 +41,7 @@ The XML file contains information about all music, background noises, sound effe
 		<background file="generalStuff/niceBG?.mp3" />
 		<effect file="theme1/*.ogg" occurence="10" />
 		<effect file="theme1/playThisOften.wav" occurence="120" volume="90" />
+		<effect file="theme1/playThisInLoop.wav" occurence="3600" volume="50" loop="true" />
 	</theme>
 
 	<theme name="Jungle" key="j">
@@ -48,7 +49,7 @@ The XML file contains information about all music, background noises, sound effe
 	</theme>
 
 	<globals volume="100">
-		<global file="generalStuff/jeopardy.ogg" key="1" name="Jeopardy Thinking Music" volume="100" interrupting="interrupting" />
+		<global file="generalStuff/jeopardy.ogg" key="1" name="Jeopardy Thinking Music" volume="100" interrupting="yes" />
 	</globals>
 </rpgbox>
 ```
@@ -65,9 +66,9 @@ You may define colors specific to a theme. As with the general color options, th
 
 Themes may contain an arbitrary number of `<background>` tags. With these tags, you can define music (or noise) files that permanently play in the background in a random order. Every background must have a `file` attribute that points to one or several files. You can address several files by using `*` (matches an arbitrary number of arbitrary characters), `?` (matches exactly one arbitrary character), or `[]` (matches exactly one character in a range of characters, e.g. `[0-9]` or `[asdf]`). In addition, backgrounds may have a `volume` in percent associated to them. Default is 100. The background volume will be adjusted by the theme volume.
 
-Themes may also contain `<effect>` tags. Here, you can define sounds that are randomly played on top of the background music. Like backgrounds, each effect must have a `file` attribute and *may* have a `volume` associated to them. See `<background>` tags for details. In addition, you may define an `occurence` attribute that defines, how often the given sound(s) is played. This `occurence` is always in relation to the `basetime` of the `<theme>`. It states how often (on average) the sound effect will be played within the `basetime`. So if the `basetime` is 3600 (one hour) and the `occurence` is 10. The sound effect(s) will be played approximately ten times per hour or every six minutes. The numbers are not precise, as the sound effects are triggered randomly. Default, minimum and maximum are 1%, 0% and 100%, respectively, of `basetime`. Another possible attribute is `cooldown`. After playing a sound, the program will block the sound for `cooldown` seconds before it can be played again. This does *not* mean, that the sound *will* be played after `cooldown` seconds. The sound is only unblocked after that time. By chosing a negative value, the sound is allowed to be played while another instance of it still plays.
+Themes may also contain `<effect>` tags. Here, you can define sounds that are randomly played on top of the background music. Like backgrounds, each effect must have a `file` attribute and *may* have a `volume` associated to them. See `<background>` tags for details. In addition, you may define an `occurence` attribute that defines, how often the given sound(s) is played. This `occurence` is always in relation to the `basetime` of the `<theme>`. It states how often (on average) the sound effect will be played within the `basetime`. So if the `basetime` is 3600 (one hour) and the `occurence` is 10. The sound effect(s) will be played approximately ten times per hour or every six minutes. The numbers are not precise, as the sound effects are triggered randomly. Default, minimum and maximum are 1%, 0% and 100%, respectively, of `basetime`. Another possible attribute is `cooldown`. After playing a sound, the program will block the sound for `cooldown` seconds before it can be played again. This does *not* mean, that the sound *will* be played after `cooldown` seconds. The sound is only unblocked after that time. By chosing a negative value, the sound is allowed to be played while another instance of it still plays. You may have sound effects that are played permanently in a loop, by adding a `loop` attribute to it that must be "truthy" (i.e. *yes*, *y*, *on*, *true*, *1*). Be carefull that you don't have too many (i.e. more than two or three) looped sounds as these block audio channels.
 
-Besides themes, there may be global effects. These are bundled within a `<globals>` tag. This tag may optionally have a `volume` attribute. Within the `<globals>` tag, there must be at least one `<global>` tag (without `s`). Each `<global>` tag *must* have a `file`, a `key`, and a `name` attribute, refering to the filename, the keyboard key that is associated with the global effect, and the name of the effect, respectively. In addtion, you may state a `volume` that will be modified similar to the music and sound volumes with the `volume` of `<globals>`. The last possible attribute is `interrupting`. If this attribute is set (the value is unimportant), the global effect will stop all other music and sounds when it is invoked. If it is not set, music and other sounds will continue playing while that global effect is active.
+Besides themes, there may be global effects. These are bundled within a `<globals>` tag. This tag may optionally have a `volume` attribute. Within the `<globals>` tag, there must be at least one `<global>` tag (without `s`). Each `<global>` tag *must* have a `file`, a `key`, and a `name` attribute, refering to the filename, the keyboard key that is associated with the global effect, and the name of the effect, respectively. In addtion, you may state a `volume` that will be modified similar to the music and sound volumes with the `volume` of `<globals>`. The last possible attribute is `interrupting`. If this attribute is set and the value is "truthy" (i.e. *yes*, *y*, *on*, *true*, *1*), the global effect will stop all other music and sounds when it is invoked. If it is not set, music and other sounds will continue playing while that global effect is active.
 
 
 Keys
@@ -83,7 +84,7 @@ Other predefined keys are:
 - F1: Allow or disallow music
 - F2: Allow or disallow sounds
 - F5: Allow or disallow custom colors
-- F10: Force redrawing of the scren (Debugging function, likely to be removed later)
+- F10: Force redrawing of the screen (Debugging function, likely to be removed later)
 - escape: quit
 
 
@@ -110,7 +111,7 @@ Similar programs
 
 - In addtion to the abovementioned background tracks, [Tabletop Audio](http://tabletopaudio.com) also offers a sound pad with some preconfigured sets.
 
-- http://www.ambient-mixer.com
+- <http://www.ambient-mixer.com>
 
 
 Bugs and things that are planned to do
