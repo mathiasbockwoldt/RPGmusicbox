@@ -1050,9 +1050,10 @@ class Player(object):
 					self.showLine(area, name, self.colorEmph, self.standardFont)
 
 		if self.blockedSounds:
-			for k in self.blockedSounds.keys():
+			to_delete = []
+			for k in list(self.blockedSounds.keys()):
 				if self.blockedSounds[k] < 0:
-					del(self.blockedSounds[k])
+					del self.blockedSounds[k]
 
 		self.screen.blit(self.background, (0, 0))
 
