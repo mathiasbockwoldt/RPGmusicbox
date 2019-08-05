@@ -144,7 +144,7 @@ class Theme(object):
 	Container for one theme including its songs and sounds.
 	'''
 
-	def __init__(self, key, name, colorText, colorBackground, colorEmph, colorFade, songs = None, sounds = None, occurences = None):
+	def __init__(self, key, name, colorText, colorBackground, colorEmph, colorFade, songs = None, sounds = None, occurrences = None):
 		'''
 		Initiates the theme.
 
@@ -156,7 +156,7 @@ class Theme(object):
 		:param colorFade: The fading color for this theme
 		:param songs: A list with songs in the theme.
 		:param sounds: A list with sounds in the theme.
-		:param occurences: A list with occurences of the songs in the theme.
+		:param occurrences: A list with occurrences of the songs in the theme.
 		'''
 
 		self.key = str(key)[0]
@@ -172,10 +172,10 @@ class Theme(object):
 		else:
 			self.sounds = sounds[:]
 
-		if occurences is None:
-			self.occurences = []
+		if occurrences is None:
+			self.occurrences = []
 		else:
-			self.occurences = occurences[:]
+			self.occurrences = occurrences[:]
 
 		self.colorText = colorText
 		self.colorBackground = colorBackground
@@ -218,21 +218,21 @@ class Theme(object):
 		self.sounds.append(sound)
 
 
-	def addOccurences(self, occurences):
+	def addOccurrences(self, occurrences):
 		'''
-		Adds a list of occurences to the theme. The total number of occurences after the addition must be the same as the total number of songs in the theme. So add the songs first.
+		Adds a list of occurrences to the theme. The total number of occurrences after the addition must be the same as the total number of songs in the theme. So add the songs first.
 
-		:param occurences: List of occurences of the songs
-		:raises KeyError: When the total number of occurences does not fit the total number of songs in the theme
+		:param occurrences: List of occurrences of the songs
+		:raises KeyError: When the total number of occurrences does not fit the total number of songs in the theme
 		'''
 
-		self.occurences.extend(occurences)
+		self.occurrences.extend(occurrences)
 
-		if len(self.occurences) != len(self.sounds):
-			raise KeyError('The number of sounds is not equal to the number of occurences in {}!'.format(self.name))
+		if len(self.occurrences) != len(self.sounds):
+			raise KeyError('The number of sounds is not equal to the number of occurrences in {}!'.format(self.name))
 
 		for i in range(len(self.sounds)):
-			self.sounds[i].occurence = self.occurences[i]
+			self.sounds[i].occurrence = self.occurrences[i]
 
 
 	# CLASS Theme END
@@ -243,7 +243,7 @@ class Sound(object):
 	Container for one sound.
 	'''
 
-	def __init__(self, filename, name, volume = 1, cooldown = 10, occurence = 0.01, loop = False):
+	def __init__(self, filename, name, volume = 1, cooldown = 10, occurrence = 0.01, loop = False):
 		'''
 		Initiates the sound.
 
@@ -251,24 +251,24 @@ class Sound(object):
 		:param name: String with the name
 		:param volume: Float with the relative volume (already adjusted by the theme volume)
 		:param cooldown: Float with the cooldown time in seconds
-		:param occurence: Float with relative occururence (already adjusted by the theme basetime)
-		:param loop: Boolean whether the sound shall be played indefinitely or not. `occurence` is disregarded when loop is True.
+		:param occurrence: Float with relative occurrence (already adjusted by the theme basetime)
+		:param loop: Boolean whether the sound shall be played indefinitely or not. `occurrence` is disregarded when loop is True.
 		'''
 
 		self.filename = str(filename)
 		self.name = str(name)
 		self.volume = float(volume)
 		self.cooldown = float(cooldown)
-		self.occurence = float(occurence)
+		self.occurrence = float(occurrence)
 		self.loop = bool(loop)
 		if self.loop:
-			self.occurence = 0.01
+			self.occurrence = 0.01
 
 
 	def __str__(self):
 		''' :returns: A string representation of the sound with all attributes. '''
 
-		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', '{:.4f}'.format(self.occurence), ', cd: ', str(self.cooldown), ', loop: ', str(self.loop), ')'))
+		return ''.join((self.filename, ' (vol: ', str(self.volume), ', occ: ', '{:.4f}'.format(self.occurrence), ', cd: ', str(self.cooldown), ', loop: ', str(self.loop), ')'))
 
 
 	# CLASS Sound END
@@ -348,9 +348,9 @@ class RPGbox(object):
 	DEFAULT_BASETIME = 3600		# Default basetime is 3600 seconds (1 hour)
 	MIN_BASETIME = 1			# Minimum basetime is 1 second
 	MAX_BASETIME = 36000		# Maximum basetime is 36 000 seconds (10 hours)
-	DEFAULT_OCCURENCE = 0.01	# Default occurence is 0.01 (1% of basetime)
-	MIN_OCCURENCE = 0			# Minimum occurence is 0 (never)
-	MAX_OCCURENCE = 1			# Maximum occurence is 1 (always)
+	DEFAULT_OCCURENCE = 0.01	# Default occurrence is 0.01 (1% of basetime)
+	MIN_OCCURENCE = 0			# Minimum occurrence is 0 (never)
+	MAX_OCCURENCE = 1			# Maximum occurrence is 1 (always)
 	DEFAULT_VOLUME = 100		# Default volume is 100% (100)
 	MIN_VOLUME = 0				# Minimum volume is 0%
 	MAX_VOLUME = 1				# Maximum volume is 100% (1.0)
@@ -500,8 +500,8 @@ class RPGbox(object):
 			# Create the theme and add it to the themes dict
 			self.themes[themeID] = Theme(key = themeKey, name = themeName, colorText = colorText, colorBackground = colorBackground, colorEmph = colorEmph, colorFade = colorFade)
 
-			# Initiate the occurences list. First element must be 0
-			occurences = [0]
+			# Initiate the occurrences list. First element must be 0
+			occurrences = [0]
 
 			# Scan through all subtags and get data like background songs and sound effects
 			for subtag in theme:
@@ -538,9 +538,9 @@ class RPGbox(object):
 					volume = int(subtag.get('volume', default = self.DEFAULT_VOLUME)) / 100.0
 					volume = self._ensureVolume(volume * themeVolume)
 
-					# Get occurence of the sound. Alter it by the theme basetime
-					occurence = int(subtag.get('occurence', default = self.DEFAULT_OCCURENCE * basetime))
-					occurence = self._ensureOccurence(occurence / basetime)
+					# Get occurrence of the sound. Alter it by the theme basetime
+					occurrence = int(subtag.get('occurrence', default = self.DEFAULT_OCCURENCE * basetime))
+					occurrence = self._ensureOccurrence(occurrence / basetime)
 
 					# Get cooldown of the sound.
 					cooldown = float(subtag.get('cooldown', default = self.DEFAULT_COOLDOWN))
@@ -548,11 +548,11 @@ class RPGbox(object):
 					# Check, whether the effect should run indefinitely (i.e. it should loop)
 					loop = ('loop' in subtag.attrib and self._interpretBool(subtag.attrib['loop']))
 
-					# Save each sound with its volume. If a filename occurs more than once, basically, the volume and occurence are updated
+					# Save each sound with its volume. If a filename occurs more than once, basically, the volume and occurrence are updated
 					for soundFile in soundFiles:
 						name = self.prettifyPath(soundFile)
 						self.themes[themeID].addSound(Sound(soundFile, name=name, volume=volume, cooldown=cooldown, loop=loop))
-						occurences.append(occurences[-1] + occurence)
+						occurrences.append(occurrences[-1] + occurrence)
 
 				# config tag found. That was already analysed, so we just ignore it silently
 				elif subtag.tag == 'config':
@@ -562,14 +562,14 @@ class RPGbox(object):
 				else:
 					print('Unknown Tag {}. Ignoring it.'.format(attr.tag), file=sys.stderr)
 
-			# Ensure, that all sounds CAN be played. If the sum of occurences is higher than one, normalize to one
-			if occurences[-1] > self.MAX_OCCURENCE:
-				divisor = occurences[-1]
-				for i in range(len(occurences)):
-					occurences[i] /= divisor
+			# Ensure, that all sounds CAN be played. If the sum of occurrences is higher than one, normalize to one
+			if occurrences[-1] > self.MAX_OCCURENCE:
+				divisor = occurrences[-1]
+				for i in range(len(occurrences)):
+					occurrences[i] /= divisor
 
-			# Add occurences to the theme
-			self.themes[themeID].addOccurences(occurences[1:])
+			# Add occurrences to the theme
+			self.themes[themeID].addOccurrences(occurrences[1:])
 
 		# Test, whether there is at least one theme in the whole box
 		if not self.themes:
@@ -662,12 +662,12 @@ class RPGbox(object):
 		return b
 
 
-	def _ensureOccurence(self, o):
+	def _ensureOccurrence(self, o):
 		'''
-		Ensures that a given occurence is within the allowed range.
+		Ensures that a given occurrence is within the allowed range.
 
-		:param o: The occurence to check
-		:returns: The occurence, that is guaranteed to be within the allowed range
+		:param o: The occurrence to check
+		:returns: The occurrence, that is guaranteed to be within the allowed range
 		'''
 
 		if o < self.MIN_OCCURENCE:
@@ -781,7 +781,7 @@ class Player(object):
 		self.initializeGlobalEffects()
 		self.activeSounds = []
 		self.activeGlobalEffect = None
-		self.occurences = []
+		self.occurrences = []
 		self.playlist = Playlist([])
 		self.activeTheme = None
 		self.activeThemeID = None
@@ -1252,8 +1252,8 @@ class Player(object):
 
 		if not self.paused and not self.activeGlobalEffect and self.activeSounds and pygame.mixer.find_channel() is not None:
 			rand = random.random()
-			if rand < self.occurences[-1]:
-				i = findSound(self.occurences, rand)
+			if rand < self.occurrences[-1]:
+				i = findSound(self.occurrences, rand)
 				if i is not None and self.activeSounds[i].filename not in self.blockedSounds:
 					newSound = self.activeSounds[i]
 					self.debugPrint('Now playing sound {} with volume {}'.format(newSound.filename, newSound.volume))
@@ -1293,7 +1293,7 @@ class Player(object):
 
 		self.playlist = Playlist(self.activeTheme.songs)
 
-		self.occurences = self.activeTheme.occurences
+		self.occurrences = self.activeTheme.occurrences
 
 		# Push a SONG_END event on the event stack to trigger the start of a new song (causes a delay of one cycle, but that should be fine)
 		pygame.event.post(pygame.event.Event(self.SONG_END))
@@ -1330,7 +1330,7 @@ class Player(object):
 			channel.stop()
 
 		self.activeSounds = []
-		self.occurences = []
+		self.occurrences = []
 		self.playlist = Playlist([])
 
 		#pygame.mixer.stop()	# Stop all playing sounds

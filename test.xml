@@ -6,9 +6,9 @@
 		<background file="theme1/*.mp3" volume="100" />
 		<background file="theme1/veryLoudFile.mp3" volume="75" />
 		<background file="generalStuff/niceBG?.mp3" />
-		<effect file="theme1/*.ogg" occurence="10" />
-		<effect file="theme1/playThisOften.wav" occurence="120" volume="90" />
-		<effect file="theme1/playThisInLoop.wav" occurence="3600" volume="50" loop="true" />
+		<effect file="theme1/*.ogg" occurrence="10" />
+		<effect file="theme1/playThisOften.wav" occurrence="120" volume="90" />
+		<effect file="theme1/playThisInLoop.wav" occurrence="3600" volume="50" loop="true" />
 	</theme>
 
 	<theme name="Jungle" key="j">
