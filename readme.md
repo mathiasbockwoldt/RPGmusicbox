@@ -10,11 +10,18 @@ RPGbox can provide all of this. First, you need to collect the music and the sou
 At the gaming table, you set up the computer with speakers and a keyboard. No mouse fiddling is needed. When you need a certain theme, just hit the corresponding key on your keyboard. The background music will start in random order and sound effects will start playing randomly. You can skip an inappropriate song anytime by pressing the right-arrow key. You can also pause and unpause anytime by hitting space. There is also the possibility for global effects, like some sound for a critical hit or killing a particularly difficult enemy. Or what about the Jeopardy thinking music for some player that cannot decide? These global effects have a key assigned to them that you can press anytime. You can define for each effect whether it should interrupt all other music (Jeopardy music) or just overlay existing music and effects (critical hit).
 
 
-Dependencies
-------------
+Installing from sources
+-----------------------
 
-- Python 3: https://www.python.org
-- Pygame: http://www.pygame.org/download.shtml
+```sh
+git clone https://github.com/mathiasbockwoldt/RPGmusicbox
+cd RPGmusicbox
+virtualenv venv
+source venv/bin/activate
+pip install -e .
+```
+
+This project is not registered at Pypi, yet.
 
 
 Supported media files
@@ -115,6 +122,6 @@ Similar programs
 Bugs and things that are planned to do
 --------------------------------------
 
-You can send me bugs via the GitHub issue system.
+You can send me bugs via the [GitHub issue system](issues).
 
-A todo list is in the first lines of the script.
+I have a [list of to-do's](todo.md).
