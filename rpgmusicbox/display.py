@@ -38,7 +38,7 @@ class Display():
 		Updates the screen parameters.
 		'''
 
-		self.screen = pygame.display.set_mode((width, height))
+		self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
 
 		self.background = pygame.Surface(self.screen.get_size()).convert()
 		self.background.fill(self.colors.bg)

@@ -525,8 +525,12 @@ class Player():
 					pygame.quit()
 					return
 
+				# The window size was changed
+				if event.type == pygame.VIDEORESIZE:
+					self.display.screen_size_changed(event.w, event.h)
+
 				# At least one key was pressed
-				if event.type == pygame.KEYDOWN:
+				elif event.type == pygame.KEYDOWN:
 
 					# Pre-processing: Map numpad keys to normal numbers
 					if 256 <= event.key <= 265:
@@ -583,11 +587,11 @@ class Player():
 						self.play_global_effect(event.key)
 
 				# The last song is finished (or a new theme was loaded) -> start new song, if available
-				if event.type == self.SONG_END:
+				elif event.type == self.SONG_END:
 					self.play_music()
 
 				# A global effect is finished
-				if event.type == self.GLOBAL_END:
+				elif event.type == self.GLOBAL_END:
 					self.stop_global_effect(by_end_event = True)
 
 			# Sound effects can be triggered every tenth cycle (about every second).
