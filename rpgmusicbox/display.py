@@ -2,7 +2,6 @@ import pygame
 
 class Display():
 
-
 	def __init__(self, colors):
 		self.colors = colors
 		pygame.display.set_caption('RPGbox player')        # Set window title
@@ -33,60 +32,64 @@ class Display():
 		self.colors = colors
 
 
-	def screen_size_changed(self, width, height):
+	def screen_size_changed(self, new_width, new_height):
 		'''
 		Updates the screen parameters.
 		'''
 
-		self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+		self.screen = pygame.display.set_mode((new_width, new_height), pygame.RESIZABLE)
 
 		self.background = pygame.Surface(self.screen.get_size()).convert()
 		self.background.fill(self.colors.bg)
 		self.screen.blit(self.background, (0, 0))
 		pygame.display.flip()
 
-		w, h = self.background.get_size()
-		self.display_width = w
-		self.display_panel_width = w // 3
-		self.display_footer_width = w // 6
-		self.display_height = h
-		self.display_panel_height = h - 2 * self.standard_font.size(' ')[1]
-		self.display_footer_height = h - self.display_panel_height
+		width, height = self.background.get_size()
+		self.display_width = width
+		self.display_panel_width = width // 3
+		self.display_footer_width = width // 6
+		self.display_height = height
+		self.display_panel_height = height - 2 * self.standard_font.size(' ')[1]
+		self.display_footer_height = height - self.display_panel_height
 		self.display_border = 5
 
 		self.text_global_keys = pygame.Surface((self.display_panel_width, self.display_panel_height))
 		self.text_theme_keys = pygame.Surface((self.display_panel_width, self.display_panel_height))
 
 		# The display_width - 2*panel_width fills the rounding error pixels on the right side
-		self.text_now_playing = pygame.Surface((self.display_width - 2*self.display_panel_width, self.display_panel_height))
+		self.text_now_playing = pygame.Surface(
+			(self.display_width - 2*self.display_panel_width,
+			self.display_panel_height)
+		)
 
 		# The footer stretches horizontally to 100%.
 		# The display_footer_width is for the single elements in the footer.
 		self.text_footer = pygame.Surface((self.display_width, self.display_footer_height))
 
 
-	def draw_line(self, area, t, color, font):
+	def draw_line(self, area, text, color, font):
 		'''
 		Prints one line of text to a panel.
 
 		:param area: A rect with information, where the text shall be blitted on the background
-		:param t: The text to be rendered
+		:param text: The text to be rendered
 		:param color: The color of the text
 		:param font: The font object that shall be rendered
 		'''
 
-		text_rect = font.render(t, True, color)
+		text_rect = font.render(text, True, color)
 		self.background.blit(text_rect, area)
 		area.top += font.get_linesize()
 
 
-	def draw_footer_element(self, n, field):
+	def draw_footer_element(self, num, field):
 		'''
 		Helper function for self.draw_footer(). Prints two lines of text to screen in a given color.
 		It never updates the screen.
 
 		:param n: The number of the panel in the footer counted from the left (determines position)
-		:param field: Field with a tuple of two strings with the lines to be rendered and the information whether the field is active or not
+		:param field: Field with a tuple of two strings with the lines to be
+		    rendered and the information whether the field is active or not
 		'''
 
 		fgcolor = self.colors.text
@@ -95,21 +98,21 @@ class Display():
 		if not field.active:
 			fgcolor, bgcolor = bgcolor, fgcolor
 
-		s = pygame.Surface((self.display_footer_width, self.display_footer_height)).convert()
-		s.fill(bgcolor)
-		s_pos = s.get_rect()
+		surf = pygame.Surface((self.display_footer_width, self.display_footer_height)).convert()
+		surf.fill(bgcolor)
+		surf_pos = surf.get_rect()
 
 		for i, line in enumerate(field.text):
-			t = self.standard_font.render(line, True, fgcolor)
-			t_pos = t.get_rect()
-			t_pos.centerx = s_pos.centerx
-			t_pos.top = t_pos.height * i
-			s.blit(t, t_pos2)
+			txt = self.standard_font.render(line, True, fgcolor)
+			txt_pos = txt.get_rect()
+			txt_pos.centerx = surf_pos.centerx
+			txt_pos.top = txt_pos.height * i
+			surf.blit(txt, txt_pos)
 
-		s_pos.top = self.display_panel_height
-		s_pos.left = n * self.display_footer_width
+		surf_pos.top = self.display_panel_height
+		surf_pos.left = num * self.display_footer_width
 
-		self.background.blit(s, s_pos)
+		self.background.blit(surf, surf_pos)
 
 
 	def draw_footer(self, fields, update):

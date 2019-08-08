@@ -2,9 +2,11 @@ from random import shuffle
 
 
 class Playlist():
-	''' Contains a playlist that is dynamically extended, taking care that no song is repeated directly '''
+	'''
+	Contains a playlist that is dynamically extended, taking care that no song is repeated directly
+	'''
 
-	def __init__(self, songs, remember = 5):
+	def __init__(self, songs, remember=5):
 		'''
 		Initiates the playlist.
 
@@ -44,7 +46,8 @@ class Playlist():
 			self.playlist.extend(new_songlist)
 
 
-	# I don't need this function until now. If playlists get too long, it would be a good idea to write this method
+	# I don't need this function until now.
+	# If playlists get too long, it would be a good idea to write this method
 	#def _shorten_playlist(self):
 	#	''' Cuts away parts in the beginning of the playlist to save memory '''
 	#
@@ -76,14 +79,19 @@ class Playlist():
 		if self.now_playing >= 0:
 			return self.playlist[self.now_playing]
 
-		# In case, previous_song() is called multiple times while in the beginning of the list, the pointer needs to be reset to 0, such that next_song() starts at 0 again.
+		# In case, previous_song() is called multiple times while in the beginning
+		# of the list, the pointer needs to be reset to 0, such that next_song()
+		# starts at 0 again.
 		self.now_playing += 1
 		return None
 
 
 	def get_songs_for_viewing(self):
 		'''
-		:returns: A list with three songs that are the previous, current and next song. If there is only one song in the whole playlist, the list will have only one element. If the current song is the first one in the playlist, the list will have only two elements.
+		:returns: A list with three songs that are the previous, current and next song.
+		    If there is only one song in the whole playlist, the list will have only
+		    one element. If the current song is the first one in the playlist, the list
+		    will have only two elements.
 		'''
 
 		if not self.playlist:

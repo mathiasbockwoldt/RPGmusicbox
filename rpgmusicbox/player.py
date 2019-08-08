@@ -1,4 +1,3 @@
-import os
 from collections import namedtuple
 from random import random
 from bisect import bisect_right
@@ -6,7 +5,8 @@ from copy import deepcopy
 
 import pygame
 
-import display
+from display import Display
+from playlist import Playlist
 
 Field = namedtuple('Field', ['text', 'active'])
 
@@ -16,7 +16,7 @@ class Player():
 	This class can read RPGbox objects and play music and sounds etc.
 	'''
 
-	def __init__(self, box, debug = False):
+	def __init__(self, box, debug=False):
 		'''
 		Initiates all necessary stuff for playing an RPGbox.
 
@@ -44,14 +44,14 @@ class Player():
 		self.global_channel.set_endevent(self.GLOBAL_END)
 
 		# Initialize variables
-		self.global_IDs, self.theme_IDs = self.box.get_IDs()
+		self.global_ids, self.theme_ids = self.box.get_ids()
 		self.global_effects = None
 		self.active_sounds = []
 		self.active_global_effect = None
 		self.occurrences = []
 		self.playlist = Playlist([])
 		self.active_theme = None
-		self.active_theme_ID = None
+		self.active_theme_id = None
 
 		self.cycle = 0
 		self.allow_music = True
@@ -69,7 +69,8 @@ class Player():
 		self.update_text_all()
 
 
-	def debug_print(self, t):
+	# TODO: This should be done by the logger module
+	def debug_print(self, text):
 		'''
 		Prints the given text, if debugging (self.debug) is active.
 
@@ -77,7 +78,7 @@ class Player():
 		'''
 
 		if self.debug:
-			print(t)
+			print(text)
 
 
 	def initialize_global_effects(self):
@@ -87,9 +88,9 @@ class Player():
 
 		self.global_effects = self.box.get_global_effects()
 
-		for e in self.global_effects:
-			self.global_effects[e].obj = pygame.mixer.Sound(self.global_effects[e].filename)
-			self.global_effects[e].obj.set_volume(self.global_effects[e].volume)
+		for effect in self.global_effects:
+			self.global_effects[effect].obj = pygame.mixer.Sound(self.global_effects[effect].filename)
+			self.global_effects[effect].obj.set_volume(self.global_effects[effect].volume)
 
 
 	def toggle_debug_output(self):
@@ -105,7 +106,10 @@ class Player():
 
 
 	def toggle_pause(self):
-		''' Pause or unpause music and sounds, depending on the self.paused and self.interrupting_global_effect variables. '''
+		'''
+		Pause or unpause music and sounds, depending on the self.paused and
+		self.interrupting_global_effect variables.
+		'''
 
 		if self.paused:
 			self.debug_print('Player unpaused')
@@ -129,16 +133,17 @@ class Player():
 	def toggle_allow_music(self):
 		''' Allow or disallow music to be played. '''
 
+		self.allow_music = not self.allow_music
+
 		if self.allow_music:
-			self.allow_music = False
-			pygame.mixer.music.stop()
-			self.playlist.previous_song()  # Necessary to start with the same song, when music is allowed again
-			self.update_text_now_playing()
-			self.debug_print('Music switched off')
-		else:
-			self.allow_music = True
 			pygame.event.post(pygame.event.Event(self.SONG_END))
 			self.debug_print('Music switched on')
+		else:
+			pygame.mixer.music.stop()
+			self.playlist.previous_song()  # When the music starts again, it will run next()
+			                               # This will keep the current song.
+			self.update_text_now_playing()
+			self.debug_print('Music switched off')
 		self.update_text_footer()
 
 
@@ -148,8 +153,8 @@ class Player():
 		if self.allow_sounds:
 			self.allow_sounds = False
 			if self.active_channels:
-				for c in self.active_channels:
-					c[1].stop()
+				for _, channel in self.active_channels:
+					channel.stop()
 			self.update_text_now_playing()
 			self.debug_print('Sound switched off')
 		else:
@@ -177,15 +182,15 @@ class Player():
 	def update_text_all(self):
 		''' Update the whole screen. '''
 		self.background.fill(self.colors.bg)
-		self.update_text_global_effects(update = False)
-		self.update_text_themes(update = False)
-		self.update_text_now_playing(update = False)
-		self.update_text_footer(update = False)
+		self.update_text_global_effects(update=False)
+		self.update_text_themes(update=False)
+		self.update_text_now_playing(update=False)
+		self.update_text_footer(update=False)
 
 		pygame.display.flip()
 
 
-	def update_text_global_effects(self, update = True):
+	def update_text_global_effects(self, update=True):
 		'''
 		Update the global effects panel
 
@@ -194,14 +199,14 @@ class Player():
 
 		to_draw = []
 
-		for k in sorted(self.global_effects.keys()):
-			t = ''.join((chr(k), ' - ', self.global_effects[k].name))
-			to_draw.append(Field(t, k == self.active_global_effect))
+		for key in sorted(self.global_effects):
+			string = ''.join((chr(key), ' - ', self.global_effects[key].name))
+			to_draw.append(Field(string, key == self.active_global_effect))
 
 		self.display.draw_global_effects(to_draw, update)
 
 
-	def update_text_themes(self, update = True):
+	def update_text_themes(self, update=True):
 		'''
 		Update the themes panel
 
@@ -210,14 +215,14 @@ class Player():
 
 		to_draw = []
 
-		for k in sorted(self.box.themes.keys()):
-			t = ''.join((chr(k), ' - ', self.box.themes[k].name))
-			to_draw.append(Field(t, k == self.active_theme_ID))
+		for key in sorted(self.box.themes):
+			string = ''.join((chr(key), ' - ', self.box.themes[key].name))
+			to_draw.append(Field(string, key == self.active_theme_id))
 
 		self.display.draw_themes(to_draw, update)
 
 
-	def update_text_now_playing(self, update = True):
+	def update_text_now_playing(self, update=True):
 		'''
 		Update the now playing panel
 
@@ -254,24 +259,24 @@ class Player():
 					to_delete.append(i)
 
 			for i in to_delete[::-1]:
-				del(self.active_channels[i])
+				del self.active_channels[i]
 
 			# all members may have been deleted, that's why here is a new `if`
 			if self.active_channels:
 				to_draw.append(Field('', 0))
-				for name, c in sorted(self.active_channels):
+				for name, _ in sorted(self.active_channels):
 					to_draw.append(Field(name, 1))
 
 		if self.blocked_sounds:
 			to_delete = []
-			for k in self.blocked_sounds.keys():
+			for k in self.blocked_sounds:
 				if self.blocked_sounds[k] < 0:
 					del self.blocked_sounds[k]
 
 		self.display.draw_playing(to_draw, update)
 
 
-	def update_text_footer(self, update = True):
+	def update_text_footer(self, update=True):
 		'''
 		Update the footer
 
@@ -310,7 +315,7 @@ class Player():
 		self.display.draw_footer(to_draw, update)
 
 
-	def play_music(self, previous = False):
+	def play_music(self, previous=False):
 		'''
 		Plays the next or previous song. Any playing song will be replaced by the new song.
 
@@ -344,33 +349,36 @@ class Player():
 				self.debug_print('No music available in theme {}'.format(self.active_theme.name))
 
 
-	def play_global_effect(self, effect_ID):
+	def play_global_effect(self, effect_id):
 		'''
 		Plays a global effect taking care of interrupting other music and sounds if necessary.
 
-		:param effect_ID: The ID of the effect to be played.
+		:param effect_id: The id of the effect to be played.
 		'''
 
 		if self.global_channel.get_busy():
-			self.debug_print('Reserved channel is busy! Active key is {}'.format(chr(self.active_global_effect)))
+			self.debug_print(
+				'Reserved channel is busy! Active key is {}'.
+				format(chr(self.active_global_effect))
+			)
 			return
 
-		if self.global_effects[effect_ID].interrupting:
+		if self.global_effects[effect_id].interrupting:
 			self.interrupting_global_effect = True
 			pygame.mixer.music.pause()
-			for name, channel in self.active_channels:
+			for _, channel in self.active_channels:
 				channel.pause()
 
-		self.active_global_effect = effect_ID
-		self.global_channel.play(self.global_effects[effect_ID].obj)
+		self.active_global_effect = effect_id
+		self.global_channel.play(self.global_effects[effect_id].obj)
 
-		self.debug_print('Now playing {}'.format(self.global_effects[effect_ID].name))
+		self.debug_print('Now playing {}'.format(self.global_effects[effect_id].name))
 
 		self.update_text_global_effects()
 		self.update_text_now_playing()
 
 
-	def stop_global_effect(self, by_end_event = False):
+	def stop_global_effect(self, by_end_event=False):
 		'''
 		Stops a global effect, if it is still running.
 		Takes care of restarting potentially interrupted music and sounds.
@@ -401,18 +409,19 @@ class Player():
 		Plays a random sound and adds its channel to the active_channels list.
 		'''
 
-		def find_sound(a, x):
+		def find_sound(haystack, needle):
 			'''
 			Find leftmost value greater than x using bisect
 
-			:param a: A sorted list with elements
-			:param x: The element to look for
-			:returns: The index of the leftmost element greater than x or None, if x is greater than the rightmost element
+			:param haystack: A sorted list with elements
+			:param needle: The element to look for
+			:returns: The index of the leftmost element greater than x or None,
+			    if x is greater than the rightmost element
 			'''
 
-			i = bisect_right(a, x)
-			if i != len(a):
-				return i
+			pos = bisect_right(haystack, needle)
+			if pos != len(haystack):
+				return pos
 			return None
 
 		# If sounds are not allowed, update the now playing panel and do nothing more
@@ -420,27 +429,35 @@ class Player():
 			self.update_text_now_playing()
 			return
 
-		if not self.paused and not self.active_global_effect and self.active_sounds and pygame.mixer.find_channel() is not None:
+		if (not self.paused and
+				not self.active_global_effect and
+				self.active_sounds and
+				pygame.mixer.find_channel() is not None):
 			rand = random()
 			if rand < self.occurrences[-1]:
 				i = find_sound(self.occurrences, rand)
 				if i is not None and self.active_sounds[i].filename not in self.blocked_sounds:
 					new_sound = self.active_sounds[i]
-					self.debug_print('Now playing sound {} with volume {}'.format(new_sound.filename, new_sound.volume))
+					self.debug_print(
+						'Now playing sound {} with volume {}'.
+						format(new_sound.filename, new_sound.volume)
+					)
 					self.active_channels.append((new_sound.name, new_sound.obj.play()))
 					self.blocked_sounds[new_sound.filename] = new_sound.obj.get_length() + new_sound.cooldown
 		self.update_text_now_playing()
 
 
-	def activate_new_theme(self, theme_ID):
+	def activate_new_theme(self, theme_id):
 		'''
-		Activates a new theme. All sounds of that theme are loaded and their volumes adjusted. A new playlist is initiated with all songs. All running sounds are stopped and new music is played.
+		Activates a new theme. All sounds of that theme are loaded and their
+		volumes adjusted. A new playlist is initiated with all songs. All
+		running sounds are stopped and new music is played.
 
-		:param theme_ID: The ID of the theme to activate
+		:param theme_id: The id of the theme to activate
 		'''
 
-		self.active_theme = self.box.get_theme(theme_ID)
-		self.active_theme_ID = theme_ID
+		self.active_theme = self.box.get_theme(theme_id)
+		self.active_theme_id = theme_id
 
 		self.debug_print('New theme is {}'.format(self.active_theme.name))
 
@@ -448,7 +465,7 @@ class Player():
 		if self.allow_custom_colors:
 			self.display.colors = self.active_theme.colors
 
-		looped_Sounds = []
+		looped_sounds = []
 
 		# Get sounds and load them into pygame
 		self.active_sounds = deepcopy(self.active_theme.sounds)
@@ -456,21 +473,22 @@ class Player():
 			sound.obj = pygame.mixer.Sound(sound.filename)
 			sound.obj.set_volume(sound.volume)
 			if sound.loop:
-				looped_Sounds.append(i)
+				looped_sounds.append(i)
 
 		self.playlist = Playlist(self.active_theme.songs)
 
 		self.occurrences = self.active_theme.occurrences
 
-		# Push a SONG_END event on the event stack to trigger the start of a new song (causes a delay of one cycle, but that should be fine)
+		# Push a SONG_END event on the event stack to trigger the start of a
+		# new song (causes a delay of one cycle, but that should be fine)
 		pygame.event.post(pygame.event.Event(self.SONG_END))
 
 		pygame.mixer.stop()  # Stop all playing sounds
 
 		# Start all sounds that shall be looped
-		for i in looped_Sounds:
+		for i in looped_sounds:
 			new_sound = self.active_sounds[i]
-			self.active_channels.append(('>> {}'.format(new_sound.name), new_sound.obj.play(loops = -1)))
+			self.active_channels.append(('>> {}'.format(new_sound.name), new_sound.obj.play(loops=-1)))
 			self.blocked_sounds[new_sound.filename] = 604800 # one week
 
 		self.update_text_all()
@@ -478,19 +496,20 @@ class Player():
 
 	def deactivate_theme(self):
 		'''
-		Deactivates a theme. All sounds of that theme are discarded. The playlist is emptied. All running sounds and music are stopped.
+		Deactivates a theme. All sounds of that theme are discarded.
+		The playlist is emptied. All running sounds and music are stopped.
 		'''
 
 		self.debug_print('Theme {} was deactivated'.format(self.active_theme.name))
 
 		self.active_theme = None
-		self.active_theme_ID = None
+		self.active_theme_id = None
 
 		# Update colors
 		if self.allow_custom_colors:
 			self.display.colors = self.box.colors
 
-		for name, channel in self.active_channels:
+		for _, channel in self.active_channels:
 			channel.stop()
 
 		self.active_sounds = []
@@ -525,7 +544,7 @@ class Player():
 					return
 
 				# The window size was changed
-				if event.type == pygame.VIDEORESIZE:
+				if event.type == pygame.VidEORESIZE:
 					self.display.screen_size_changed(event.w, event.h)
 
 				# At least one key was pressed
@@ -542,7 +561,7 @@ class Player():
 						return
 
 					# The space key was pressed -> (un)pause everything
-					elif event.key == pygame.K_SPACE:
+					if event.key == pygame.K_SPACE:
 						self.toggle_pause()
 
 					# The "->" key was pressed -> next song
@@ -551,7 +570,7 @@ class Player():
 
 					# The "<-" key was pressed -> previous song
 					elif event.key == pygame.K_LEFT:
-						self.play_music(previous = True)
+						self.play_music(previous=True)
 
 					# The F1 key was pressed -> (dis)allow Music
 					elif event.key == pygame.K_F1:
@@ -570,7 +589,7 @@ class Player():
 						self.toggle_debug_output()
 
 					# The key is the key of the active theme -> deactivate theme (become silent)
-					elif event.key == self.active_theme_ID:
+					elif event.key == self.active_theme_id:
 						self.deactivate_theme()
 
 					# The key is the key of the active global effect -> stop it
@@ -578,11 +597,11 @@ class Player():
 						self.stop_global_effect()
 
 					# The key is one of the theme keys -> activate the theme
-					elif event.key in self.theme_IDs:
+					elif event.key in self.theme_ids:
 						self.activate_new_theme(event.key)
 
 					# The key is one of the global keys -> trigger effect
-					elif event.key in self.global_IDs:
+					elif event.key in self.global_ids:
 						self.play_global_effect(event.key)
 
 				# The last song is finished (or a new theme was loaded) -> start new song, if available
@@ -591,13 +610,13 @@ class Player():
 
 				# A global effect is finished
 				elif event.type == self.GLOBAL_END:
-					self.stop_global_effect(by_end_event = True)
+					self.stop_global_effect(by_end_event=True)
 
 			# Sound effects can be triggered every tenth cycle (about every second).
 			if self.cycle > 10:
 				self.cycle = 0
 				if self.blocked_sounds:
-					for k in self.blocked_sounds.keys():
+					for k in self.blocked_sounds:
 						self.blocked_sounds[k] -= 1
 				self.play_sound()
 			self.cycle += 1

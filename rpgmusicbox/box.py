@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from pygame import Color
 
-from containers import Global_Effect, Song, Sound, Theme
+from containers import GlobalEffect, Song, Sound, Theme
 
 
 Colormap = namedtuple('Colormap', ['text', 'bg', 'emph', 'fade'])
@@ -51,10 +51,11 @@ class RPGmusicbox():
 		self.colors = self.update_colors({}, default=True)
 		self.default_colors = self.colors
 
-		# Saves theme keys and connects them to theme object {theme_ID: Theme(), ...}
+		# Saves theme keys and connects them to theme object {theme_id: Theme(), ...}
 		self.themes = {}
 
-		# Saves theme keys and connects them to global effect object {global_Effect_ID: Global_Effect(), ...}
+		# Saves theme keys and connects them to global effect object
+		# {global_Effect_id: GlobalEffect(), ...}
 		self.global_effects = {}
 
 
@@ -64,13 +65,13 @@ class RPGmusicbox():
 		'''
 
 		ret = ['RPGmusicbox', 'Themes']
-		for t in sorted(self.themes.keys()):
-			ret.append(str(self.themes[t]))
+		for key in sorted(self.themes):
+			ret.append(str(self.themes[key]))
 
 		ret.append('Global effects')
 
-		for e in sorted(self.global_effects.keys()):
-			ret.append(str(self.global_effects[e]))
+		for key in sorted(self.global_effects):
+			ret.append(str(self.global_effects[key]))
 
 		return '\n'.join(ret)
 
@@ -82,11 +83,11 @@ class RPGmusicbox():
 
 		colors = {}
 
-		for c in self.name_to_color:
-			if c in colors:
-				colors[c] = Color(colors[c])
+		for name in self.name_to_color:
+			if name in colors:
+				colors[name] = Color(colors[name])
 			else:
-				colors[c] = Color(self.name_to_color[c])
+				colors[name] = Color(self.name_to_color[name])
 
 		if default:
 			self.colors = Colormap(**colors)
@@ -99,10 +100,16 @@ class RPGmusicbox():
 		Adds a global effect.
 		'''
 
-		self._ensure_valid_ID(kid)
+		self._ensure_valid_id(kid)
 		volume = self._ensure_volume(volume)
 
-		self.global_effects[kid] = Global_Effect(filename = filename, key = chr(kid), name = name, volume = volume, interrupting = interrupting)
+		self.global_effects[kid] = GlobalEffect(
+			filename=filename,
+			key=chr(kid),
+			name=name,
+			volume=volume,
+			interrupting=interrupting
+		)
 
 
 	def add_theme(self, kid, name, colors):
@@ -112,7 +119,7 @@ class RPGmusicbox():
 
 		colors = self.update_colors(colors, default=False)
 
-		self.themes[kid] = Theme(key = kid, name = name, colors = colors)
+		self.themes[kid] = Theme(kid=kid, name=name, colors=colors)
 
 
 	def add_song(self, kid, path, name, volume):
@@ -143,23 +150,26 @@ class RPGmusicbox():
 		self.themes[kid].occurrences = occurrences
 
 
-	def _ensure_valid_ID(self, kid):
+	def _ensure_valid_id(self, kid):
 		'''
-		Ensures, that a given keyboard key (or rather its ID) is valid for the RPGbox.
+		Ensures, that a given keyboard key (or rather its id) is valid for the RPGbox.
 
-		:param kid: The key ID to check (not the key, but its ID!)
+		:param kid: The key id to check (not the key, but its id!)
 		:raises: ValueError
 		'''
 
 		# Allowed: 0-9, a-z
 		if not (48 <= kid <= 57 or 97 <= kid <= 122):
-			raise ValueError('The key {} is not in the allowed range (a-z lowercase and 0-9 only!)'.format(chr(kid)))
+			raise ValueError(
+				'The key {} is not in the allowed range (a-z lowercase and 0-9 only!)'.
+				format(chr(kid))
+			)
 
 		if kid in self.global_effects or kid in self.themes:
 			raise ValueError('The key {} is already registered!'.format(chr(kid)))
 
 
-	def _ensure_volume(self, v):
+	def _ensure_volume(self, vol):
 		'''
 		Ensures that a given volume is within the allowed range.
 
@@ -167,15 +177,15 @@ class RPGmusicbox():
 		:returns: The volume, that is guaranteed to be within the allowed range
 		'''
 
-		if v < self.MIN_VOLUME:
+		if vol < self.MIN_VOLUME:
 			return self.MIN_VOLUME
-		elif v > self.MAX_VOLUME:
+		if vol > self.MAX_VOLUME:
 			return self.MAX_VOLUME
 
-		return v
+		return vol
 
 
-	def ensure_basetime(self, b):
+	def ensure_basetime(self, basetime):
 		'''
 		Ensures that a given basetime is within the allowed range.
 
@@ -183,15 +193,15 @@ class RPGmusicbox():
 		:returns: The basetime, that is guaranteed to be within the allowed range
 		'''
 
-		if b < self.MIN_BASETIME:
+		if basetime < self.MIN_BASETIME:
 			return self.MIN_BASETIME
-		elif b > self.MAX_BASETIME:
+		if basetime > self.MAX_BASETIME:
 			return self.MAX_BASETIME
 
-		return b
+		return basetime
 
 
-	def _ensure_occurrence(self, o):
+	def _ensure_occurrence(self, occ):
 		'''
 		Ensures that a given occurrence is within the allowed range.
 
@@ -199,17 +209,17 @@ class RPGmusicbox():
 		:returns: The occurrence, that is guaranteed to be within the allowed range
 		'''
 
-		if o < self.MIN_OCCURRENCE:
+		if occ < self.MIN_OCCURRENCE:
 			return self.MIN_OCCURRENCE
-		elif o > self.MAX_OCCURRENCE:
+		if occ > self.MAX_OCCURRENCE:
 			return self.MAX_OCCURRENCE
 
-		return o
+		return occ
 
 
-	def get_IDs(self):
+	def get_ids(self):
 		'''
-		:returns: a list of two lists: the keys of all global IDs and the keys of all theme IDs
+		:returns: a list of two lists: the keys of all global ids and the keys of all theme ids
 		'''
 
 		return list(self.global_effects.keys()), list(self.themes.keys())
@@ -217,20 +227,20 @@ class RPGmusicbox():
 
 	def get_global_effects(self):
 		'''
-		:returns: all global effects (a dict in the form {global_Effect_ID: Global_Effect_Object, ...})
+		:returns: all global effects (a dict in the form {global_Effect_id: GlobalEffect(), ...})
 		'''
 
 		return self.global_effects
 
 
-	def get_theme(self, theme_ID):
+	def get_theme(self, theme_id):
 		'''
-		:param theme_ID: The id of the theme to get
+		:param theme_id: The id of the theme to get
 		:returns: The Theme object of the desired theme
-		:raises KeyError: if the given theme_ID is no theme_ID
+		:raises KeyError: if the given theme_id is no theme_id
 		'''
 
-		if theme_ID in self.themes:
-			return self.themes[theme_ID]
-		else:
-			raise KeyError('The key {} is not registered.'.format(theme_ID))
+		if theme_id in self.themes:
+			return self.themes[theme_id]
+
+		raise KeyError('The key {} is not registered.'.format(theme_id))
