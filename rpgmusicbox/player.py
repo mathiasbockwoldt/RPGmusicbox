@@ -6,16 +6,10 @@ from copy import deepcopy
 import pygame
 
 
-class Player(object):
+class Player():
 	'''
 	This class can read RPGbox objects and play music and sounds etc.
 	'''
-
-	# Default colors
-	COLOR_TEXT = (0, 0, 0)			# Text color: black
-	COLOR_BG = (255, 255, 255)		# Background color: white
-	COLOR_EMPH = (200, 0, 0)		# Emphasizing color: red
-	COLOR_FADE = (127, 127, 127)	# Fading color: grey
 
 	def __init__(self, box, debug = False):
 		'''
@@ -36,14 +30,11 @@ class Player(object):
 		pygame.display.set_caption('RPGbox player')		# Set window title
 
 		# Get colors
-		self.colorText = self.box.colorText
-		self.colorBackground = self.box.colorBackground
-		self.colorEmph = self.box.colorEmph
-		self.colorFade = self.box.colorFade
+		self.colors = self.box.colors
 
 		# Fill background
 		self.background = pygame.Surface(self.screen.get_size()).convert()
-		self.background.fill(self.colorBackground)
+		self.background.fill(self.colors.bg)
 		self.screen.blit(self.background, (0, 0))
 		pygame.display.flip()
 
@@ -76,7 +67,7 @@ class Player(object):
 		self.textFooter = pygame.Surface((self.displayWidth, self.displayFooterHeight)) # The footer stretches horizontally to 100%. The displayFooterWidth is for the single elements in the footer.
 
 		# Initialize variables
-		self.globalIDs, self.themeIDs = self.box.getIDs()
+		self.globalIDs, self.themeIDs = self.box.get_IDs()
 		self.globalEffects = None
 		self.initializeGlobalEffects()
 		self.activeSounds = []
@@ -116,7 +107,7 @@ class Player(object):
 		Loads the file for each global effect to RAM and adjust its volume to have it ready.
 		'''
 
-		self.globalEffects = self.box.getGlobalEffects()
+		self.globalEffects = self.box.get_global_effects()
 
 		for e in self.globalEffects:
 			self.globalEffects[e].obj = pygame.mixer.Sound(self.globalEffects[e].filename)
@@ -192,31 +183,22 @@ class Player(object):
 	def toggleAllowCustomColors(self):
 		''' Allow or disallow custom colors. '''
 
+		self.allowCustomColors = not self.allowCustomColors
+
 		if self.allowCustomColors:
-			self.colorText = self.COLOR_TEXT
-			self.colorBackground = self.COLOR_BG
-			self.colorEmph = self.COLOR_EMPH
-			self.colorFade = self.COLOR_FADE
-			self.allowCustomColors = False
-		else:
 			if self.activeTheme is None:
-				self.colorText = self.box.colorText
-				self.colorBackground = self.box.colorBackground
-				self.colorEmph = self.box.colorEmph
-				self.colorFade = self.box.colorFade
+				self.colors = self.box.colors
 			else:
-				self.colorText = self.activeTheme.colorText
-				self.colorBackground = self.activeTheme.colorBackground
-				self.colorEmph = self.activeTheme.colorEmph
-				self.colorFade = self.activeTheme.colorFade
-			self.allowCustomColors = True
+				self.colors = self.activeTheme.colors
+		else:
+			self.colors = self.box.default_colors
 
 		self.updateTextAll()
 
 
 	def updateTextAll(self):
 		''' Update the whole screen. '''
-		self.background.fill(self.colorBackground)
+		self.background.fill(self.colors.bg)
 		self.updateTextGlobalEffects(update = False)
 		self.updateTextThemes(update = False)
 		self.updateTextNowPlaying(update = False)
@@ -247,22 +229,22 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textGlobalKeys.fill(self.colorBackground)
+		self.textGlobalKeys.fill(self.colors.bg)
 		r = self.background.blit(self.textGlobalKeys, (0, 0))
 
 		area = self.textGlobalKeys.get_rect()
 		area.left = self.displayBorder
 		area.top = self.displayBorder
 
-		self.showLine(area, 'Global Keys', self.colorText, self.headerFont)
-		self.showLine(area, '', self.colorText, self.standardFont)
+		self.showLine(area, 'Global Keys', self.colors.text, self.headerFont)
+		self.showLine(area, '', self.colors.text, self.standardFont)
 
 		for k in sorted(self.globalEffects.keys()):
 			t = ''.join((chr(k), ' - ', self.globalEffects[k].name))
 			if k == self.activeGlobalEffect:
-				self.showLine(area, t, self.colorEmph, self.standardFont)
+				self.showLine(area, t, self.colors.emph, self.standardFont)
 			else:
-				self.showLine(area, t, self.colorText, self.standardFont)
+				self.showLine(area, t, self.colors.text, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -277,22 +259,22 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textThemeKeys.fill(self.colorBackground)
+		self.textThemeKeys.fill(self.colors.bg)
 		r = self.background.blit(self.textThemeKeys, (self.displayPanelWidth, 0))
 
 		area = self.textThemeKeys.get_rect()
 		area.left = self.displayPanelWidth + self.displayBorder
 		area.top = self.displayBorder
 
-		self.showLine(area, 'Themes', self.colorText, self.headerFont)
-		self.showLine(area, '', self.colorText, self.standardFont)
+		self.showLine(area, 'Themes', self.colors.text, self.headerFont)
+		self.showLine(area, '', self.colors.text, self.standardFont)
 
 		for k in sorted(self.box.themes.keys()):
 			t = ''.join((chr(k), ' - ', self.box.themes[k].name))
 			if k == self.activeThemeID:
-				self.showLine(area, t, self.colorEmph, self.standardFont)
+				self.showLine(area, t, self.colors.emph, self.standardFont)
 			else:
-				self.showLine(area, t, self.colorText, self.standardFont)
+				self.showLine(area, t, self.colors.text, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -307,32 +289,32 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textNowPlaying.fill(self.colorBackground)
+		self.textNowPlaying.fill(self.colors.bg)
 		r = self.background.blit(self.textNowPlaying, (2 * self.displayPanelWidth, 0))
 
 		area = self.textNowPlaying.get_rect()
 		area.left = 2 * self.displayPanelWidth + self.displayBorder
 		area.top = self.displayBorder
 
-		self.showLine(area, 'Now Playing', self.colorText, self.headerFont)
+		self.showLine(area, 'Now Playing', self.colors.text, self.headerFont)
 
 		songs = self.playlist.getSongsForViewing()
 
 		if songs is not None:
-			self.showLine(area, '', self.colorText, self.standardFont)
+			self.showLine(area, '', self.colors.text, self.standardFont)
 
 			if len(songs) == 1:
-				self.showLine(area, '>> ' + songs[0].name, self.colorEmph, self.standardFont)
+				self.showLine(area, '>> ' + songs[0].name, self.colors.emph, self.standardFont)
 			elif len(songs) == 2:
 				if songs[0]:
-					self.showLine(area, songs[0].name, self.colorEmph, self.standardFont)
+					self.showLine(area, songs[0].name, self.colors.emph, self.standardFont)
 				else:
-					self.showLine(area, '', self.colorText, self.standardFont)
-				self.showLine(area, songs[1].name, self.colorText, self.standardFont)
+					self.showLine(area, '', self.colors.text, self.standardFont)
+				self.showLine(area, songs[1].name, self.colors.text, self.standardFont)
 			else:
-				self.showLine(area, songs[0].name, self.colorFade, self.standardFont)
-				self.showLine(area, songs[1].name, self.colorEmph, self.standardFont)
-				self.showLine(area, songs[2].name, self.colorText, self.standardFont)
+				self.showLine(area, songs[0].name, self.colors.fade, self.standardFont)
+				self.showLine(area, songs[1].name, self.colors.emph, self.standardFont)
+				self.showLine(area, songs[2].name, self.colors.text, self.standardFont)
 
 		if self.activeChannels:
 			toDelete = []
@@ -345,9 +327,9 @@ class Player(object):
 
 			# all members may have been deleted, that's why here is a new `if`
 			if self.activeChannels:
-				self.showLine(area, '', self.colorText, self.standardFont)
+				self.showLine(area, '', self.colors.text, self.standardFont)
 				for name, c in sorted(self.activeChannels):
-					self.showLine(area, name, self.colorEmph, self.standardFont)
+					self.showLine(area, name, self.colors.emph, self.standardFont)
 
 		if self.blockedSounds:
 			to_delete = []
@@ -404,35 +386,35 @@ class Player(object):
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textFooter.fill(self.colorBackground)
+		self.textFooter.fill(self.colors.bg)
 		r = self.background.blit(self.textFooter, (0, self.displayPanelHeight))
 
 		if self.allowMusic:
-			self.showFooterElement(0, 'F1', 'allow music', self.colorText, self.colorBackground, self.standardFont)
+			self.showFooterElement(0, 'F1', 'allow music', self.colors.text, self.colors.bg, self.standardFont)
 		else:
-			self.showFooterElement(0, 'F1', 'disallow music', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(0, 'F1', 'disallow music', self.colors.bg, self.colors.text, self.standardFont)
 
 		if self.allowSounds:
-			self.showFooterElement(1, 'F2', 'allow sounds', self.colorText, self.colorBackground, self.standardFont)
+			self.showFooterElement(1, 'F2', 'allow sounds', self.colors.text, self.colors.bg, self.standardFont)
 		else:
-			self.showFooterElement(1, 'F2', 'disallow sounds', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(1, 'F2', 'disallow sounds', self.colors.bg, self.colors.text, self.standardFont)
 
 		if not self.paused:
-			self.showFooterElement(2, 'Space', 'unpaused', self.colorText, self.colorBackground, self.standardFont)
+			self.showFooterElement(2, 'Space', 'unpaused', self.colors.text, self.colors.bg, self.standardFont)
 		else:
-			self.showFooterElement(2, 'Space', 'paused', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(2, 'Space', 'paused', self.colors.bg, self.colors.text, self.standardFont)
 
 		if self.allowCustomColors:
-			self.showFooterElement(3, 'F5', 'custom colors', self.colorText, self.colorBackground, self.standardFont)
+			self.showFooterElement(3, 'F5', 'custom colors', self.colors.text, self.colors.bg, self.standardFont)
 		else:
-			self.showFooterElement(3, 'F5', 'standard colors', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(3, 'F5', 'standard colors', self.colors.bg, self.colors.text, self.standardFont)
 
 		if not self.debug:
-			self.showFooterElement(4, 'F10', 'no debug output', self.colorText, self.colorBackground, self.standardFont)
+			self.showFooterElement(4, 'F10', 'no debug output', self.colors.text, self.colors.bg, self.standardFont)
 		else:
-			self.showFooterElement(4, 'F10', 'debug output', self.colorBackground, self.colorText, self.standardFont)
+			self.showFooterElement(4, 'F10', 'debug output', self.colors.bg, self.colors.text, self.standardFont)
 
-		self.showFooterElement(5, 'Escape', 'quit', self.colorText, self.colorBackground, self.standardFont)
+		self.showFooterElement(5, 'Escape', 'quit', self.colors.text, self.colors.bg, self.standardFont)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -569,17 +551,14 @@ class Player(object):
 		:param themeID: The ID of the theme to activate
 		'''
 
-		self.activeTheme = self.box.getTheme(themeID)
+		self.activeTheme = self.box.get_theme(themeID)
 		self.activeThemeID = themeID
 
 		self.debugPrint('New theme is {}'.format(self.activeTheme.name))
 
 		# Update colors
 		if self.allowCustomColors:
-			self.colorText = self.activeTheme.colorText
-			self.colorBackground = self.activeTheme.colorBackground
-			self.colorEmph = self.activeTheme.colorEmph
-			self.colorFade = self.activeTheme.colorFade
+			self.colors = self.activeTheme.colors
 
 		loopedSounds = []
 
@@ -621,10 +600,7 @@ class Player(object):
 
 		# Update colors
 		if self.allowCustomColors:
-			self.colorText = self.box.colorText
-			self.colorBackground = self.box.colorBackground
-			self.colorEmph = self.box.colorEmph
-			self.colorFade = self.box.colorFade
+			self.colors = self.box.colors
 
 		for name, channel in self.activeChannels:
 			channel.stop()
