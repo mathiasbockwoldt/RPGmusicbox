@@ -4,6 +4,10 @@ import os
 import sys
 import argparse
 
+from player import Player
+
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
 parser = argparse.ArgumentParser(description='Tool to bring music and sound effects to the game table.')
 
 parser.add_argument('-x', '--xml', help='Path to the XML file with the information')
