@@ -91,15 +91,15 @@ class Playlist():
 
 		# If there is only one song in total
 		if len(self.songs) == 1:
-			return self.songs	# [the_only_song]
+			return self.songs              # [the_only_song]
 
 		# If the first song did not yet start to play
 		if self.now_playing < 0:
-			return ['', self.playlist[0]]	# ['', next]
+			return ['', self.playlist[0]]  # ['', next]
 
 		# If the first song plays
 		if self.now_playing == 0:
-			return self.playlist[0:2]	# [current, next]
+			return self.playlist[0:2]      # [current, next]
 
 		# Usual playing
 		return self.playlist[self.now_playing - 1: self.now_playing + 2]	# [prev, current, next]

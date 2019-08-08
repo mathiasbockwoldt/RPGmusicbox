@@ -15,23 +15,23 @@ class RPGmusicbox():
 	'''
 
 	# Default values
-	DEFAULT_BASETIME = 3600		# Default basetime is 3600 seconds (1 hour)
-	MIN_BASETIME = 1			# Minimum basetime is 1 second
-	MAX_BASETIME = 36000		# Maximum basetime is 36 000 seconds (10 hours)
-	DEFAULT_OCCURRENCE = 0.01	# Default occurrence is 0.01 (1% of basetime)
-	MIN_OCCURRENCE = 0			# Minimum occurrence is 0 (never)
-	MAX_OCCURRENCE = 1			# Maximum occurrence is 1 (always)
-	DEFAULT_VOLUME = 100		# Default volume is 100% (100)
-	MIN_VOLUME = 0				# Minimum volume is 0%
-	MAX_VOLUME = 1				# Maximum volume is 100% (1.0)
-	DEFAULT_COOLDOWN = 10		# Default cooldown is 10 seconds
+	DEFAULT_BASETIME = 3600    # Default basetime is 3600 seconds (1 hour)
+	MIN_BASETIME = 1           # Minimum basetime is 1 second
+	MAX_BASETIME = 36000       # Maximum basetime is 36 000 seconds (10 hours)
+	DEFAULT_OCCURRENCE = 0.01  # Default occurrence is 0.01 (1% of basetime)
+	MIN_OCCURRENCE = 0         # Minimum occurrence is 0 (never)
+	MAX_OCCURRENCE = 1         # Maximum occurrence is 1 (always)
+	DEFAULT_VOLUME = 100       # Default volume is 100% (100)
+	MIN_VOLUME = 0             # Minimum volume is 0%
+	MAX_VOLUME = 1             # Maximum volume is 100% (1.0)
+	DEFAULT_COOLDOWN = 10      # Default cooldown is 10 seconds
 	# MIN and MAX cooldown are not defined, as they are not needed
 
 	# Default colors
-	COLOR_TEXT = '#000000'			# Text color: black
-	COLOR_BG = '#ffffff'			# Background color: white
-	COLOR_EMPH = '#c80000'			# Emphasizing color: red
-	COLOR_FADE = '#7f7f7f'			# Fading color: grey
+	COLOR_TEXT = '#000000'     # Text color: black
+	COLOR_BG = '#ffffff'       # Background color: white
+	COLOR_EMPH = '#c80000'     # Emphasizing color: red
+	COLOR_FADE = '#7f7f7f'     # Fading color: grey
 
 
 	def __init__(self):

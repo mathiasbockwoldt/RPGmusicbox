@@ -61,7 +61,7 @@ class Player():
 		self.new_song_while_pause = False
 		self.interrupting_global_effect = False
 		self.active_channels = []
-		self.blocked_Sounds = {}	# {filename: time_to_start_again, ...}
+		self.blocked_sounds = {}  # {filename: time_to_start_again, ...}
 
 		self.initialize_global_effects()
 
@@ -132,7 +132,7 @@ class Player():
 		if self.allow_music:
 			self.allow_music = False
 			pygame.mixer.music.stop()
-			self.playlist.now_playing -= 1	# Necessary to start with the same song, when music is allowed again
+			self.playlist.previous_song()  # Necessary to start with the same song, when music is allowed again
 			self.update_text_now_playing()
 			self.debug_print('Music switched off')
 		else:
@@ -262,11 +262,11 @@ class Player():
 				for name, c in sorted(self.active_channels):
 					to_draw.append(Field(name, 1))
 
-		if self.blocked_Sounds:
+		if self.blocked_sounds:
 			to_delete = []
-			for k in self.blocked_Sounds.keys():
-				if self.blocked_Sounds[k] < 0:
-					del self.blocked_Sounds[k]
+			for k in self.blocked_sounds.keys():
+				if self.blocked_sounds[k] < 0:
+					del self.blocked_sounds[k]
 
 		self.display.draw_playing(to_draw, update)
 
@@ -424,11 +424,11 @@ class Player():
 			rand = random()
 			if rand < self.occurrences[-1]:
 				i = find_sound(self.occurrences, rand)
-				if i is not None and self.active_sounds[i].filename not in self.blocked_Sounds:
+				if i is not None and self.active_sounds[i].filename not in self.blocked_sounds:
 					new_sound = self.active_sounds[i]
 					self.debug_print('Now playing sound {} with volume {}'.format(new_sound.filename, new_sound.volume))
 					self.active_channels.append((new_sound.name, new_sound.obj.play()))
-					self.blocked_Sounds[new_sound.filename] = new_sound.obj.get_length() + new_sound.cooldown
+					self.blocked_sounds[new_sound.filename] = new_sound.obj.get_length() + new_sound.cooldown
 		self.update_text_now_playing()
 
 
@@ -452,10 +452,10 @@ class Player():
 
 		# Get sounds and load them into pygame
 		self.active_sounds = deepcopy(self.active_theme.sounds)
-		for i in range(len(self.active_sounds)):
-			self.active_sounds[i].obj = pygame.mixer.Sound(self.active_sounds[i].filename)
-			self.active_sounds[i].obj.set_volume(self.active_sounds[i].volume)
-			if self.active_sounds[i].loop:
+		for i, sound in enumerate(self.active_sounds):
+			sound.obj = pygame.mixer.Sound(sound.filename)
+			sound.obj.set_volume(sound.volume)
+			if sound.loop:
 				looped_Sounds.append(i)
 
 		self.playlist = Playlist(self.active_theme.songs)
@@ -465,13 +465,13 @@ class Player():
 		# Push a SONG_END event on the event stack to trigger the start of a new song (causes a delay of one cycle, but that should be fine)
 		pygame.event.post(pygame.event.Event(self.SONG_END))
 
-		pygame.mixer.stop()	# Stop all playing sounds
+		pygame.mixer.stop()  # Stop all playing sounds
 
 		# Start all sounds that shall be looped
 		for i in looped_Sounds:
 			new_sound = self.active_sounds[i]
-			self.active_channels.append(('>> ' + new_sound.name, new_sound.obj.play(loops = -1)))
-			self.blocked_Sounds[new_sound.filename] = 604800 # one week
+			self.active_channels.append(('>> {}'.format(new_sound.name), new_sound.obj.play(loops = -1)))
+			self.blocked_sounds[new_sound.filename] = 604800 # one week
 
 		self.update_text_all()
 
@@ -497,7 +497,6 @@ class Player():
 		self.occurrences = []
 		self.playlist = Playlist([])
 
-		#pygame.mixer.stop()	# Stop all playing sounds
 		pygame.mixer.music.stop() # Stop all music
 
 		self.update_text_all()
@@ -597,8 +596,8 @@ class Player():
 			# Sound effects can be triggered every tenth cycle (about every second).
 			if self.cycle > 10:
 				self.cycle = 0
-				if self.blocked_Sounds:
-					for k in self.blocked_Sounds.keys():
-						self.blocked_Sounds[k] -= 1
+				if self.blocked_sounds:
+					for k in self.blocked_sounds.keys():
+						self.blocked_sounds[k] -= 1
 				self.play_sound()
 			self.cycle += 1
