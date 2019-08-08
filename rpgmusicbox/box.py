@@ -94,7 +94,7 @@ class RPGmusicbox():
 			return Colormap(**colors)
 
 
-	def add_global_effect(self, kid, filename, key, name, volume, interrupting):
+	def add_global_effect(self, kid, filename, name, volume, interrupting):
 		'''
 		Adds a global effect.
 		'''
@@ -102,7 +102,7 @@ class RPGmusicbox():
 		self._ensure_valid_ID(kid)
 		volume = self._ensure_volume(volume)
 
-		self.global_effects[kid] = Global_Effect(filename = filename, key = key, name = name, volume = volume, interrupting = interrupting)
+		self.global_effects[kid] = Global_Effect(filename = filename, key = chr(kid), name = name, volume = volume, interrupting = interrupting)
 
 
 	def add_theme(self, kid, name, colors):

@@ -94,11 +94,11 @@ class Theme():
 	Container for one theme including its songs and sounds.
 	'''
 
-	def __init__(self, key, name, colors, songs = None, sounds = None, occurrences = None):
+	def __init__(self, kid, name, colors, songs = None, sounds = None, occurrences = None):
 		'''
 		Initiates the theme.
 
-		:param key: The keyboard key to activate the theme. Must be a one-letter string.
+		:param kid: The keyboard key id to activate the theme. Must be an integer (ord(c) of the key c).
 		:param name: String with the name of the theme.
 		:param colors: A dictionary with the colors for this theme
 		:param songs: A list with songs in the theme.
@@ -106,7 +106,8 @@ class Theme():
 		:param occurrences: A list with occurrences of the songs in the theme.
 		'''
 
-		self.key = str(key)[0]
+		self.theme_ID = kid
+		self.key = chr(kid)
 		self.name = str(name)
 
 		if songs is None:

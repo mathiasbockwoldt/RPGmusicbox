@@ -126,7 +126,6 @@ def _add_global_effect(effect, global_volume, box):
 	box.add_global_effect(
 		kid = effect_ID,
 		filename = effect_file,
-		key = effect_key,
 		name = effect_name,
 		volume = effect_volume,
 		interrupting = interrupting,

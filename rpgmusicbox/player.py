@@ -1,9 +1,14 @@
 import os
+from collections import namedtuple
 from random import random
 from bisect import bisect_right
 from copy import deepcopy
 
 import pygame
+
+import display
+
+Field = namedtuple('Field', ['text', 'active'])
 
 
 class Player():
@@ -16,27 +21,17 @@ class Player():
 		Initiates all necessary stuff for playing an RPGbox.
 
 		:param box: The RPGbox object to read from
-		:param debug: Boolean that states, whether debugging texts should be send to STDOUT
+		:param debug: Boolean that states, whether debugging texts should be sent to STDOUT
 		'''
 
+		self.box = box
 		self.debug = debug
 
-		self.box = box
-
-		# Initialize pygame, screen and clock
+		# Initialize pygame, clock, and screen
 		pygame.init()
 		self.clock = pygame.time.Clock()
-		self.screen = pygame.display.set_mode((800, 600))	# Screen is 800*600 px large
-		pygame.display.set_caption('RPGbox player')		# Set window title
-
-		# Get colors
-		self.colors = self.box.colors
-
-		# Fill background
-		self.background = pygame.Surface(self.screen.get_size()).convert()
-		self.background.fill(self.colors.bg)
-		self.screen.blit(self.background, (0, 0))
-		pygame.display.flip()
+		self.display = Display(self.box.colors)
+		self.display.screen_size_changed(800, 600)  # Default screen size is 800x600
 
 		# Create my own event to indicate that a song stopped playing to trigger a new song
 		self.SONG_END = pygame.USEREVENT + 1
@@ -48,28 +43,9 @@ class Player():
 		self.global_channel = pygame.mixer.Channel(0)
 		self.global_channel.set_endevent(self.GLOBAL_END)
 
-		# Initiate text stuff
-		self.standard_font = pygame.font.Font(None, 24)
-		self.header_font = pygame.font.Font(None, 32)
-
-		w, h = self.background.get_size()
-		self.display_width = w
-		self.display_panel_width = w // 3
-		self.display_footer_width = w // 6
-		self.display_height = h
-		self.display_panel_height = h - 2 * self.standard_font.size(' ')[1]
-		self.display_footer_height = h - self.display_panel_height
-		self.display_border = 5
-
-		self.text_global_keys = pygame.Surface((self.display_panel_width, self.display_panel_height))
-		self.text_theme_keys = pygame.Surface((self.display_panel_width, self.display_panel_height))
-		self.text_now_playing = pygame.Surface((self.display_width - 2*self.display_panel_width, self.display_panel_height))	# The display_width - 2*panel_width fills the rounding error pixels on the right side
-		self.text_footer = pygame.Surface((self.display_width, self.display_footer_height)) # The footer stretches horizontally to 100%. The display_footer_width is for the single elements in the footer.
-
 		# Initialize variables
 		self.global_IDs, self.theme_IDs = self.box.get_IDs()
 		self.global_effects = None
-		self.initialize_global_effects()
 		self.active_sounds = []
 		self.active_global_effect = None
 		self.occurrences = []
@@ -86,6 +62,8 @@ class Player():
 		self.interrupting_global_effect = False
 		self.active_channels = []
 		self.blocked_Sounds = {}	# {filename: time_to_start_again, ...}
+
+		self.initialize_global_effects()
 
 		# Start visualisation
 		self.update_text_all()
@@ -187,11 +165,11 @@ class Player():
 
 		if self.allow_custom_colors:
 			if self.active_theme is None:
-				self.colors = self.box.colors
+				self.display.colors = self.box.colors
 			else:
-				self.colors = self.active_theme.colors
+				self.display.colors = self.active_theme.colors
 		else:
-			self.colors = self.box.default_colors
+			self.display.colors = self.box.default_colors
 
 		self.update_text_all()
 
@@ -207,21 +185,6 @@ class Player():
 		pygame.display.flip()
 
 
-	def show_line(self, area, t, color, font):
-		'''
-		Prints one line of text to a panel.
-
-		:param area: A rect with information, where the text shall be blitted on the background
-		:param t: The text to be rendered
-		:param color: The color of the text
-		:param font: The font object that shall be rendered
-		'''
-
-		text_rect = font.render(t, True, color)
-		self.background.blit(text_rect, area)
-		area.top += font.get_linesize()
-
-
 	def update_text_global_effects(self, update = True):
 		'''
 		Update the global effects panel
@@ -229,27 +192,13 @@ class Player():
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.text_global_keys.fill(self.colors.bg)
-		r = self.background.blit(self.text_global_keys, (0, 0))
-
-		area = self.text_global_keys.get_rect()
-		area.left = self.display_border
-		area.top = self.display_border
-
-		self.show_line(area, 'Global Keys', self.colors.text, self.header_font)
-		self.show_line(area, '', self.colors.text, self.standard_font)
+		to_draw = []
 
 		for k in sorted(self.global_effects.keys()):
 			t = ''.join((chr(k), ' - ', self.global_effects[k].name))
-			if k == self.active_global_effect:
-				self.show_line(area, t, self.colors.emph, self.standard_font)
-			else:
-				self.show_line(area, t, self.colors.text, self.standard_font)
+			to_draw.append(Field(t, k == self.active_global_effect))
 
-		self.screen.blit(self.background, (0, 0))
-
-		if update:
-			pygame.display.update(r)
+		self.display.draw_global_effects(to_draw, update)
 
 
 	def update_text_themes(self, update = True):
@@ -259,27 +208,13 @@ class Player():
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.text_theme_keys.fill(self.colors.bg)
-		r = self.background.blit(self.text_theme_keys, (self.display_panel_width, 0))
-
-		area = self.text_theme_keys.get_rect()
-		area.left = self.display_panel_width + self.display_border
-		area.top = self.display_border
-
-		self.show_line(area, 'Themes', self.colors.text, self.header_font)
-		self.show_line(area, '', self.colors.text, self.standard_font)
+		to_draw = []
 
 		for k in sorted(self.box.themes.keys()):
 			t = ''.join((chr(k), ' - ', self.box.themes[k].name))
-			if k == self.active_theme_ID:
-				self.show_line(area, t, self.colors.emph, self.standard_font)
-			else:
-				self.show_line(area, t, self.colors.text, self.standard_font)
+			to_draw.append(Field(t, k == self.active_theme_ID))
 
-		self.screen.blit(self.background, (0, 0))
-
-		if update:
-			pygame.display.update(r)
+		self.display.draw_themes(to_draw, update)
 
 
 	def update_text_now_playing(self, update = True):
@@ -289,37 +224,33 @@ class Player():
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.text_now_playing.fill(self.colors.bg)
-		r = self.background.blit(self.text_now_playing, (2 * self.display_panel_width, 0))
-
-		area = self.text_now_playing.get_rect()
-		area.left = 2 * self.display_panel_width + self.display_border
-		area.top = self.display_border
-
-		self.show_line(area, 'Now Playing', self.colors.text, self.header_font)
+		to_draw = []
 
 		songs = self.playlist.get_songs_for_viewing()
 
-		if songs is not None:
-			self.show_line(area, '', self.colors.text, self.standard_font)
+		# In this case, active is:
+		# 0 for standard text
+		# 1 for emphasized text
+		# 2 for fading text
 
+		if songs is not None:
 			if len(songs) == 1:
-				self.show_line(area, '>> ' + songs[0].name, self.colors.emph, self.standard_font)
+				to_draw.append(Field('>> {}'.format(songs[0].name), 1))
 			elif len(songs) == 2:
 				if songs[0]:
-					self.show_line(area, songs[0].name, self.colors.emph, self.standard_font)
+					to_draw.append(Field(songs[0].name, 1))
 				else:
-					self.show_line(area, '', self.colors.text, self.standard_font)
-				self.show_line(area, songs[1].name, self.colors.text, self.standard_font)
+					to_draw.append(Field('', 0))
+				to_draw.append(Field(songs[1].name, 0))
 			else:
-				self.show_line(area, songs[0].name, self.colors.fade, self.standard_font)
-				self.show_line(area, songs[1].name, self.colors.emph, self.standard_font)
-				self.show_line(area, songs[2].name, self.colors.text, self.standard_font)
+				to_draw.append(Field(songs[0].name, 2))
+				to_draw.append(Field(songs[1].name, 1))
+				to_draw.append(Field(songs[2].name, 0))
 
 		if self.active_channels:
 			to_delete = []
-			for i in range(len(self.active_channels)):
-				if self.active_channels[i][1] is None or not self.active_channels[i][1].get_busy():
+			for i, channel in enumerate(self.active_channels):
+				if channel is None or not channel.get_busy():
 					to_delete.append(i)
 
 			for i in to_delete[::-1]:
@@ -327,56 +258,17 @@ class Player():
 
 			# all members may have been deleted, that's why here is a new `if`
 			if self.active_channels:
-				self.show_line(area, '', self.colors.text, self.standard_font)
+				to_draw.append(Field('', 0))
 				for name, c in sorted(self.active_channels):
-					self.show_line(area, name, self.colors.emph, self.standard_font)
+					to_draw.append(Field(name, 1))
 
 		if self.blocked_Sounds:
 			to_delete = []
-			for k in list(self.blocked_Sounds.keys()):
+			for k in self.blocked_Sounds.keys():
 				if self.blocked_Sounds[k] < 0:
 					del self.blocked_Sounds[k]
 
-		self.screen.blit(self.background, (0, 0))
-
-		if update:
-			pygame.display.update(r)
-
-
-	def show_footer_element(self, n, t1, t2, color, bgcolor, font):
-		'''
-		Helper function for self.update_text_footer(). Prints two lines of text to screen in a given color.
-
-		:param n: The number of the panel in the footer counted from the left (determines position)
-		:param t1: First line of the text to be rendered
-		:param t2: Second line of the text to be rendered
-		:param color: The color of the text
-		:param bgcolor: The background color
-		:param font: The font object that shall be rendered
-		'''
-
-		s = pygame.Surface((self.display_footer_width, self.display_footer_height)).convert()
-		s.fill(bgcolor)
-		text1 = font.render(t1, True, color)
-		text2 = font.render(t2, True, color)
-
-		text_pos1 = text1.get_rect()
-		text_pos2 = text2.get_rect()
-
-		s_pos = s.get_rect()
-
-		text_pos1.centerx = s_pos.centerx
-		text_pos1.top = 0
-		s.blit(text1, text_pos1)
-
-		text_pos2.centerx = s_pos.centerx
-		text_pos2.top = text_pos1.height
-		s.blit(text2, text_pos2)
-
-		s_pos.top = self.display_panel_height
-		s_pos.left = n * self.display_footer_width
-
-		self.background.blit(s, s_pos)
+		self.display.draw_playing(to_draw, update)
 
 
 	def update_text_footer(self, update = True):
@@ -386,40 +278,36 @@ class Player():
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.text_footer.fill(self.colors.bg)
-		r = self.background.blit(self.text_footer, (0, self.display_panel_height))
+		to_draw = []
 
 		if self.allow_music:
-			self.show_footer_element(0, 'F1', 'allow music', self.colors.text, self.colors.bg, self.standard_font)
+			to_draw.append(Field(('F1', 'allow music'), True))
 		else:
-			self.show_footer_element(0, 'F1', 'disallow music', self.colors.bg, self.colors.text, self.standard_font)
+			to_draw.append(Field(('F1', 'disallow music'), False))
 
 		if self.allow_sounds:
-			self.show_footer_element(1, 'F2', 'allow sounds', self.colors.text, self.colors.bg, self.standard_font)
+			to_draw.append(Field(('F2', 'allow sounds'), True))
 		else:
-			self.show_footer_element(1, 'F2', 'disallow sounds', self.colors.bg, self.colors.text, self.standard_font)
+			to_draw.append(Field(('F2', 'disallow sounds'), False))
 
 		if not self.paused:
-			self.show_footer_element(2, 'Space', 'unpaused', self.colors.text, self.colors.bg, self.standard_font)
+			to_draw.append(Field(('Space', 'unpaused'), True))
 		else:
-			self.show_footer_element(2, 'Space', 'paused', self.colors.bg, self.colors.text, self.standard_font)
+			to_draw.append(Field(('Space', 'paused'), False))
 
 		if self.allow_custom_colors:
-			self.show_footer_element(3, 'F5', 'custom colors', self.colors.text, self.colors.bg, self.standard_font)
+			to_draw.append(Field(('F5', 'custom colors'), True))
 		else:
-			self.show_footer_element(3, 'F5', 'standard colors', self.colors.bg, self.colors.text, self.standard_font)
+			to_draw.append(Field(('F5', 'standard colors'), False))
 
 		if not self.debug:
-			self.show_footer_element(4, 'F10', 'no debug output', self.colors.text, self.colors.bg, self.standard_font)
+			to_draw.append(Field(('F10', 'no debug output'), True))
 		else:
-			self.show_footer_element(4, 'F10', 'debug output', self.colors.bg, self.colors.text, self.standard_font)
+			to_draw.append(Field(('F10', 'debug output'), False))
 
-		self.show_footer_element(5, 'Escape', 'quit', self.colors.text, self.colors.bg, self.standard_font)
+		to_draw.append(Field(('Escape', 'quit'), True))
 
-		self.screen.blit(self.background, (0, 0))
-
-		if update:
-			pygame.display.update(r)
+		self.display.draw_footer(to_draw, update)
 
 
 	def play_music(self, previous = False):
@@ -558,7 +446,7 @@ class Player():
 
 		# Update colors
 		if self.allow_custom_colors:
-			self.colors = self.active_theme.colors
+			self.display.colors = self.active_theme.colors
 
 		looped_Sounds = []
 
@@ -600,7 +488,7 @@ class Player():
 
 		# Update colors
 		if self.allow_custom_colors:
-			self.colors = self.box.colors
+			self.display.colors = self.box.colors
 
 		for name, channel in self.active_channels:
 			channel.stop()
@@ -621,7 +509,7 @@ class Player():
 		'''
 
 		# remove clutter from the event queue
-		pygame.event.set_allowed(None)
+		pygame.event.set_blocked()
 		pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, self.SONG_END, self.GLOBAL_END])
 
 		# Start main loop
