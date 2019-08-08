@@ -56,7 +56,7 @@ class Song():
 		return ''.join((self.filename, ' (vol: ', str(self.volume), ')'))
 
 
-class GlobalEffect():
+class Global_Effect():
 	'''
 	Container for one global effect.
 	'''
@@ -89,7 +89,7 @@ class GlobalEffect():
 		return ''.join((self.key, ') ', self.name, ': ', self.filename, ' (vol: ', str(self.volume), s, ')'))
 
 
-class Theme(object):
+class Theme():
 	'''
 	Container for one theme including its songs and sounds.
 	'''
@@ -100,10 +100,7 @@ class Theme(object):
 
 		:param key: The keyboard key to activate the theme. Must be a one-letter string.
 		:param name: String with the name of the theme.
-		:param colorText: The text color for this theme
-		:param colorBackground: The background color for this theme
-		:param colorEmph: The emphasizing color for this theme
-		:param colorFade: The fading color for this theme
+		:param colors: A dictionary with the colors for this theme
 		:param songs: A list with songs in the theme.
 		:param sounds: A list with sounds in the theme.
 		:param occurrences: A list with occurrences of the songs in the theme.
@@ -145,7 +142,7 @@ class Theme(object):
 		return '\n'.join(ret)
 
 
-	def addSong(self, song):
+	def add_song(self, song):
 		'''
 		Add a song to the theme.
 
@@ -155,7 +152,7 @@ class Theme(object):
 		self.songs.append(song)
 
 
-	def addSound(self, sound):
+	def add_sound(self, sound):
 		'''
 		Add a sound to the theme
 
@@ -165,7 +162,7 @@ class Theme(object):
 		self.sounds.append(sound)
 
 
-	def addOccurrences(self, occurrences):
+	def add_occurrences(self, occurrences):
 		'''
 		Adds a list of occurrences to the theme. The total number of occurrences after the addition must be the same as the total number of songs in the theme. So add the songs first.
 

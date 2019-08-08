@@ -45,53 +45,53 @@ class Player():
 		# Reserve a channel for global sound effects, such that a global sound can always be played
 		self.GLOBAL_END = pygame.USEREVENT + 2
 		pygame.mixer.set_reserved(1)
-		self.globalChannel = pygame.mixer.Channel(0)
-		self.globalChannel.set_endevent(self.GLOBAL_END)
+		self.global_channel = pygame.mixer.Channel(0)
+		self.global_channel.set_endevent(self.GLOBAL_END)
 
 		# Initiate text stuff
-		self.standardFont = pygame.font.Font(None, 24)
-		self.headerFont = pygame.font.Font(None, 32)
+		self.standard_font = pygame.font.Font(None, 24)
+		self.header_font = pygame.font.Font(None, 32)
 
 		w, h = self.background.get_size()
-		self.displayWidth = w
-		self.displayPanelWidth = w // 3
-		self.displayFooterWidth = w // 6
-		self.displayHeight = h
-		self.displayPanelHeight = h - 2 * self.standardFont.size(' ')[1]
-		self.displayFooterHeight = h - self.displayPanelHeight
-		self.displayBorder = 5
+		self.display_width = w
+		self.display_panel_width = w // 3
+		self.display_footer_width = w // 6
+		self.display_height = h
+		self.display_panel_height = h - 2 * self.standard_font.size(' ')[1]
+		self.display_footer_height = h - self.display_panel_height
+		self.display_border = 5
 
-		self.textGlobalKeys = pygame.Surface((self.displayPanelWidth, self.displayPanelHeight))
-		self.textThemeKeys = pygame.Surface((self.displayPanelWidth, self.displayPanelHeight))
-		self.textNowPlaying = pygame.Surface((self.displayWidth - 2*self.displayPanelWidth, self.displayPanelHeight))	# The displayWidth - 2*panelWidth fills the rounding error pixels on the right side
-		self.textFooter = pygame.Surface((self.displayWidth, self.displayFooterHeight)) # The footer stretches horizontally to 100%. The displayFooterWidth is for the single elements in the footer.
+		self.text_global_keys = pygame.Surface((self.display_panel_width, self.display_panel_height))
+		self.text_theme_keys = pygame.Surface((self.display_panel_width, self.display_panel_height))
+		self.text_now_playing = pygame.Surface((self.display_width - 2*self.display_panel_width, self.display_panel_height))	# The display_width - 2*panel_width fills the rounding error pixels on the right side
+		self.text_footer = pygame.Surface((self.display_width, self.display_footer_height)) # The footer stretches horizontally to 100%. The display_footer_width is for the single elements in the footer.
 
 		# Initialize variables
-		self.globalIDs, self.themeIDs = self.box.get_IDs()
-		self.globalEffects = None
-		self.initializeGlobalEffects()
-		self.activeSounds = []
-		self.activeGlobalEffect = None
+		self.global_IDs, self.theme_IDs = self.box.get_IDs()
+		self.global_effects = None
+		self.initialize_global_effects()
+		self.active_sounds = []
+		self.active_global_effect = None
 		self.occurrences = []
 		self.playlist = Playlist([])
-		self.activeTheme = None
-		self.activeThemeID = None
+		self.active_theme = None
+		self.active_theme_ID = None
 
 		self.cycle = 0
-		self.allowMusic = True
-		self.allowSounds = True
-		self.allowCustomColors = True
+		self.allow_music = True
+		self.allow_sounds = True
+		self.allow_custom_colors = True
 		self.paused = False
-		self.newSongWhilePause = False
-		self.interruptingGlobalEffect = False
-		self.activeChannels = []
-		self.blockedSounds = {}	# {filename: timeToStartAgain, ...}
+		self.new_song_while_pause = False
+		self.interrupting_global_effect = False
+		self.active_channels = []
+		self.blocked_Sounds = {}	# {filename: time_to_start_again, ...}
 
 		# Start visualisation
-		self.updateTextAll()
+		self.update_text_all()
 
 
-	def debugPrint(self, t):
+	def debug_print(self, t):
 		'''
 		Prints the given text, if debugging (self.debug) is active.
 
@@ -102,112 +102,112 @@ class Player():
 			print(t)
 
 
-	def initializeGlobalEffects(self):
+	def initialize_global_effects(self):
 		'''
 		Loads the file for each global effect to RAM and adjust its volume to have it ready.
 		'''
 
-		self.globalEffects = self.box.get_global_effects()
+		self.global_effects = self.box.get_global_effects()
 
-		for e in self.globalEffects:
-			self.globalEffects[e].obj = pygame.mixer.Sound(self.globalEffects[e].filename)
-			self.globalEffects[e].obj.set_volume(self.globalEffects[e].volume)
+		for e in self.global_effects:
+			self.global_effects[e].obj = pygame.mixer.Sound(self.global_effects[e].filename)
+			self.global_effects[e].obj.set_volume(self.global_effects[e].volume)
 
 
-	def toggleDebugOutput(self):
+	def toggle_debug_output(self):
 		''' Allows or disallows debug output to stdout '''
 
 		if self.debug:
 			self.debug = False
 		else:
 			self.debug = True
-			self.debugPrint('Debug printing activated')
+			self.debug_print('Debug printing activated')
 
-		self.updateTextFooter()
+		self.update_text_footer()
 
 
-	def togglePause(self):
-		''' Pause or unpause music and sounds, depending on the self.paused and self.interruptingGlobalEffect variables. '''
+	def toggle_pause(self):
+		''' Pause or unpause music and sounds, depending on the self.paused and self.interrupting_global_effect variables. '''
 
 		if self.paused:
-			self.debugPrint('Player unpaused')
+			self.debug_print('Player unpaused')
 			self.paused = False
-			if self.interruptingGlobalEffect:
-				self.globalChannel.unpause()
+			if self.interrupting_global_effect:
+				self.global_channel.unpause()
 			else:
 				pygame.mixer.music.unpause()
 				pygame.mixer.unpause()
-				if self.newSongWhilePause:
-					self.newSongWhilePause = False
+				if self.new_song_while_pause:
+					self.new_song_while_pause = False
 					pygame.mixer.music.play()
 		else:
 			pygame.mixer.music.pause()
 			pygame.mixer.pause()
-			self.debugPrint('Player paused')
+			self.debug_print('Player paused')
 			self.paused = True
-		self.updateTextFooter()
+		self.update_text_footer()
 
 
-	def toggleAllowMusic(self):
+	def toggle_allow_music(self):
 		''' Allow or disallow music to be played. '''
 
-		if self.allowMusic:
-			self.allowMusic = False
+		if self.allow_music:
+			self.allow_music = False
 			pygame.mixer.music.stop()
-			self.playlist.nowPlaying -= 1	# Necessary to start with the same song, when music is allowed again
-			self.updateTextNowPlaying()
-			self.debugPrint('Music switched off')
+			self.playlist.now_playing -= 1	# Necessary to start with the same song, when music is allowed again
+			self.update_text_now_playing()
+			self.debug_print('Music switched off')
 		else:
-			self.allowMusic = True
+			self.allow_music = True
 			pygame.event.post(pygame.event.Event(self.SONG_END))
-			self.debugPrint('Music switched on')
-		self.updateTextFooter()
+			self.debug_print('Music switched on')
+		self.update_text_footer()
 
 
-	def toggleAllowSounds(self):
+	def toggle_allow_sounds(self):
 		''' Allow or disallow sounds to be played. '''
 
-		if self.allowSounds:
-			self.allowSounds = False
-			if self.activeChannels:
-				for c in self.activeChannels:
+		if self.allow_sounds:
+			self.allow_sounds = False
+			if self.active_channels:
+				for c in self.active_channels:
 					c[1].stop()
-			self.updateTextNowPlaying()
-			self.debugPrint('Sound switched off')
+			self.update_text_now_playing()
+			self.debug_print('Sound switched off')
 		else:
-			self.allowSounds = True
-			self.debugPrint('Sound switched on')
-		self.updateTextFooter()
+			self.allow_sounds = True
+			self.debug_print('Sound switched on')
+		self.update_text_footer()
 
 
-	def toggleAllowCustomColors(self):
+	def toggle_allow_custom_colors(self):
 		''' Allow or disallow custom colors. '''
 
-		self.allowCustomColors = not self.allowCustomColors
+		self.allow_custom_colors = not self.allow_custom_colors
 
-		if self.allowCustomColors:
-			if self.activeTheme is None:
+		if self.allow_custom_colors:
+			if self.active_theme is None:
 				self.colors = self.box.colors
 			else:
-				self.colors = self.activeTheme.colors
+				self.colors = self.active_theme.colors
 		else:
 			self.colors = self.box.default_colors
 
-		self.updateTextAll()
+		self.update_text_all()
 
 
-	def updateTextAll(self):
+	def update_text_all(self):
 		''' Update the whole screen. '''
 		self.background.fill(self.colors.bg)
-		self.updateTextGlobalEffects(update = False)
-		self.updateTextThemes(update = False)
-		self.updateTextNowPlaying(update = False)
-		self.updateTextFooter(update = False)
+		self.update_text_global_effects(update = False)
+		self.update_text_themes(update = False)
+		self.update_text_now_playing(update = False)
+		self.update_text_footer(update = False)
 
 		pygame.display.flip()
 
 
-	def showLine(self, area, t, color, font):
+	def show_line(self, area, t, color, font):
 		'''
 		Prints one line of text to a panel.
 
@@ -217,34 +217,34 @@ class Player():
 		:param font: The font object that shall be rendered
 		'''
 
-		textRect = font.render(t, True, color)
-		self.background.blit(textRect, area)
+		text_rect = font.render(t, True, color)
+		self.background.blit(text_rect, area)
 		area.top += font.get_linesize()
 
 
-	def updateTextGlobalEffects(self, update = True):
+	def update_text_global_effects(self, update = True):
 		'''
 		Update the global effects panel
 
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textGlobalKeys.fill(self.colors.bg)
-		r = self.background.blit(self.textGlobalKeys, (0, 0))
+		self.text_global_keys.fill(self.colors.bg)
+		r = self.background.blit(self.text_global_keys, (0, 0))
 
-		area = self.textGlobalKeys.get_rect()
-		area.left = self.displayBorder
-		area.top = self.displayBorder
+		area = self.text_global_keys.get_rect()
+		area.left = self.display_border
+		area.top = self.display_border
 
-		self.showLine(area, 'Global Keys', self.colors.text, self.headerFont)
-		self.showLine(area, '', self.colors.text, self.standardFont)
+		self.show_line(area, 'Global Keys', self.colors.text, self.header_font)
+		self.show_line(area, '', self.colors.text, self.standard_font)
 
-		for k in sorted(self.globalEffects.keys()):
-			t = ''.join((chr(k), ' - ', self.globalEffects[k].name))
-			if k == self.activeGlobalEffect:
-				self.showLine(area, t, self.colors.emph, self.standardFont)
+		for k in sorted(self.global_effects.keys()):
+			t = ''.join((chr(k), ' - ', self.global_effects[k].name))
+			if k == self.active_global_effect:
+				self.show_line(area, t, self.colors.emph, self.standard_font)
 			else:
-				self.showLine(area, t, self.colors.text, self.standardFont)
+				self.show_line(area, t, self.colors.text, self.standard_font)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -252,29 +252,29 @@ class Player():
 			pygame.display.update(r)
 
 
-	def updateTextThemes(self, update = True):
+	def update_text_themes(self, update = True):
 		'''
 		Update the themes panel
 
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textThemeKeys.fill(self.colors.bg)
-		r = self.background.blit(self.textThemeKeys, (self.displayPanelWidth, 0))
+		self.text_theme_keys.fill(self.colors.bg)
+		r = self.background.blit(self.text_theme_keys, (self.display_panel_width, 0))
 
-		area = self.textThemeKeys.get_rect()
-		area.left = self.displayPanelWidth + self.displayBorder
-		area.top = self.displayBorder
+		area = self.text_theme_keys.get_rect()
+		area.left = self.display_panel_width + self.display_border
+		area.top = self.display_border
 
-		self.showLine(area, 'Themes', self.colors.text, self.headerFont)
-		self.showLine(area, '', self.colors.text, self.standardFont)
+		self.show_line(area, 'Themes', self.colors.text, self.header_font)
+		self.show_line(area, '', self.colors.text, self.standard_font)
 
 		for k in sorted(self.box.themes.keys()):
 			t = ''.join((chr(k), ' - ', self.box.themes[k].name))
-			if k == self.activeThemeID:
-				self.showLine(area, t, self.colors.emph, self.standardFont)
+			if k == self.active_theme_ID:
+				self.show_line(area, t, self.colors.emph, self.standard_font)
 			else:
-				self.showLine(area, t, self.colors.text, self.standardFont)
+				self.show_line(area, t, self.colors.text, self.standard_font)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -282,60 +282,60 @@ class Player():
 			pygame.display.update(r)
 
 
-	def updateTextNowPlaying(self, update = True):
+	def update_text_now_playing(self, update = True):
 		'''
 		Update the now playing panel
 
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textNowPlaying.fill(self.colors.bg)
-		r = self.background.blit(self.textNowPlaying, (2 * self.displayPanelWidth, 0))
+		self.text_now_playing.fill(self.colors.bg)
+		r = self.background.blit(self.text_now_playing, (2 * self.display_panel_width, 0))
 
-		area = self.textNowPlaying.get_rect()
-		area.left = 2 * self.displayPanelWidth + self.displayBorder
-		area.top = self.displayBorder
+		area = self.text_now_playing.get_rect()
+		area.left = 2 * self.display_panel_width + self.display_border
+		area.top = self.display_border
 
-		self.showLine(area, 'Now Playing', self.colors.text, self.headerFont)
+		self.show_line(area, 'Now Playing', self.colors.text, self.header_font)
 
-		songs = self.playlist.getSongsForViewing()
+		songs = self.playlist.get_songs_for_viewing()
 
 		if songs is not None:
-			self.showLine(area, '', self.colors.text, self.standardFont)
+			self.show_line(area, '', self.colors.text, self.standard_font)
 
 			if len(songs) == 1:
-				self.showLine(area, '>> ' + songs[0].name, self.colors.emph, self.standardFont)
+				self.show_line(area, '>> ' + songs[0].name, self.colors.emph, self.standard_font)
 			elif len(songs) == 2:
 				if songs[0]:
-					self.showLine(area, songs[0].name, self.colors.emph, self.standardFont)
+					self.show_line(area, songs[0].name, self.colors.emph, self.standard_font)
 				else:
-					self.showLine(area, '', self.colors.text, self.standardFont)
-				self.showLine(area, songs[1].name, self.colors.text, self.standardFont)
+					self.show_line(area, '', self.colors.text, self.standard_font)
+				self.show_line(area, songs[1].name, self.colors.text, self.standard_font)
 			else:
-				self.showLine(area, songs[0].name, self.colors.fade, self.standardFont)
-				self.showLine(area, songs[1].name, self.colors.emph, self.standardFont)
-				self.showLine(area, songs[2].name, self.colors.text, self.standardFont)
+				self.show_line(area, songs[0].name, self.colors.fade, self.standard_font)
+				self.show_line(area, songs[1].name, self.colors.emph, self.standard_font)
+				self.show_line(area, songs[2].name, self.colors.text, self.standard_font)
 
-		if self.activeChannels:
-			toDelete = []
-			for i in range(len(self.activeChannels)):
-				if self.activeChannels[i][1] is None or not self.activeChannels[i][1].get_busy():
-					toDelete.append(i)
+		if self.active_channels:
+			to_delete = []
+			for i in range(len(self.active_channels)):
+				if self.active_channels[i][1] is None or not self.active_channels[i][1].get_busy():
+					to_delete.append(i)
 
-			for i in toDelete[::-1]:
-				del(self.activeChannels[i])
+			for i in to_delete[::-1]:
+				del(self.active_channels[i])
 
 			# all members may have been deleted, that's why here is a new `if`
-			if self.activeChannels:
-				self.showLine(area, '', self.colors.text, self.standardFont)
-				for name, c in sorted(self.activeChannels):
-					self.showLine(area, name, self.colors.emph, self.standardFont)
+			if self.active_channels:
+				self.show_line(area, '', self.colors.text, self.standard_font)
+				for name, c in sorted(self.active_channels):
+					self.show_line(area, name, self.colors.emph, self.standard_font)
 
-		if self.blockedSounds:
+		if self.blocked_Sounds:
 			to_delete = []
-			for k in list(self.blockedSounds.keys()):
-				if self.blockedSounds[k] < 0:
-					del self.blockedSounds[k]
+			for k in list(self.blocked_Sounds.keys()):
+				if self.blocked_Sounds[k] < 0:
+					del self.blocked_Sounds[k]
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -343,9 +343,9 @@ class Player():
 			pygame.display.update(r)
 
 
-	def showFooterElement(self, n, t1, t2, color, bgcolor, font):
+	def show_footer_element(self, n, t1, t2, color, bgcolor, font):
 		'''
-		Helper function for self.updateTextFooter(). Prints two lines of text to screen in a given color.
+		Helper function for self.update_text_footer(). Prints two lines of text to screen in a given color.
 
 		:param n: The number of the panel in the footer counted from the left (determines position)
 		:param t1: First line of the text to be rendered
@@ -355,66 +355,66 @@ class Player():
 		:param font: The font object that shall be rendered
 		'''
 
-		s = pygame.Surface((self.displayFooterWidth, self.displayFooterHeight)).convert()
+		s = pygame.Surface((self.display_footer_width, self.display_footer_height)).convert()
 		s.fill(bgcolor)
 		text1 = font.render(t1, True, color)
 		text2 = font.render(t2, True, color)
 
-		textPos1 = text1.get_rect()
-		textPos2 = text2.get_rect()
+		text_pos1 = text1.get_rect()
+		text_pos2 = text2.get_rect()
 
-		sPos = s.get_rect()
+		s_pos = s.get_rect()
 
-		textPos1.centerx = sPos.centerx
-		textPos1.top = 0
-		s.blit(text1, textPos1)
+		text_pos1.centerx = s_pos.centerx
+		text_pos1.top = 0
+		s.blit(text1, text_pos1)
 
-		textPos2.centerx = sPos.centerx
-		textPos2.top = textPos1.height
-		s.blit(text2, textPos2)
+		text_pos2.centerx = s_pos.centerx
+		text_pos2.top = text_pos1.height
+		s.blit(text2, text_pos2)
 
-		sPos.top = self.displayPanelHeight
-		sPos.left = n * self.displayFooterWidth
+		s_pos.top = self.display_panel_height
+		s_pos.left = n * self.display_footer_width
 
-		self.background.blit(s, sPos)
+		self.background.blit(s, s_pos)
 
 
-	def updateTextFooter(self, update = True):
+	def update_text_footer(self, update = True):
 		'''
 		Update the footer
 
 		:param update: Boolean to state, whether the display should be updated
 		'''
 
-		self.textFooter.fill(self.colors.bg)
-		r = self.background.blit(self.textFooter, (0, self.displayPanelHeight))
+		self.text_footer.fill(self.colors.bg)
+		r = self.background.blit(self.text_footer, (0, self.display_panel_height))
 
-		if self.allowMusic:
-			self.showFooterElement(0, 'F1', 'allow music', self.colors.text, self.colors.bg, self.standardFont)
+		if self.allow_music:
+			self.show_footer_element(0, 'F1', 'allow music', self.colors.text, self.colors.bg, self.standard_font)
 		else:
-			self.showFooterElement(0, 'F1', 'disallow music', self.colors.bg, self.colors.text, self.standardFont)
+			self.show_footer_element(0, 'F1', 'disallow music', self.colors.bg, self.colors.text, self.standard_font)
 
-		if self.allowSounds:
-			self.showFooterElement(1, 'F2', 'allow sounds', self.colors.text, self.colors.bg, self.standardFont)
+		if self.allow_sounds:
+			self.show_footer_element(1, 'F2', 'allow sounds', self.colors.text, self.colors.bg, self.standard_font)
 		else:
-			self.showFooterElement(1, 'F2', 'disallow sounds', self.colors.bg, self.colors.text, self.standardFont)
+			self.show_footer_element(1, 'F2', 'disallow sounds', self.colors.bg, self.colors.text, self.standard_font)
 
 		if not self.paused:
-			self.showFooterElement(2, 'Space', 'unpaused', self.colors.text, self.colors.bg, self.standardFont)
+			self.show_footer_element(2, 'Space', 'unpaused', self.colors.text, self.colors.bg, self.standard_font)
 		else:
-			self.showFooterElement(2, 'Space', 'paused', self.colors.bg, self.colors.text, self.standardFont)
+			self.show_footer_element(2, 'Space', 'paused', self.colors.bg, self.colors.text, self.standard_font)
 
-		if self.allowCustomColors:
-			self.showFooterElement(3, 'F5', 'custom colors', self.colors.text, self.colors.bg, self.standardFont)
+		if self.allow_custom_colors:
+			self.show_footer_element(3, 'F5', 'custom colors', self.colors.text, self.colors.bg, self.standard_font)
 		else:
-			self.showFooterElement(3, 'F5', 'standard colors', self.colors.bg, self.colors.text, self.standardFont)
+			self.show_footer_element(3, 'F5', 'standard colors', self.colors.bg, self.colors.text, self.standard_font)
 
 		if not self.debug:
-			self.showFooterElement(4, 'F10', 'no debug output', self.colors.text, self.colors.bg, self.standardFont)
+			self.show_footer_element(4, 'F10', 'no debug output', self.colors.text, self.colors.bg, self.standard_font)
 		else:
-			self.showFooterElement(4, 'F10', 'debug output', self.colors.bg, self.colors.text, self.standardFont)
+			self.show_footer_element(4, 'F10', 'debug output', self.colors.bg, self.colors.text, self.standard_font)
 
-		self.showFooterElement(5, 'Escape', 'quit', self.colors.text, self.colors.bg, self.standardFont)
+		self.show_footer_element(5, 'Escape', 'quit', self.colors.text, self.colors.bg, self.standard_font)
 
 		self.screen.blit(self.background, (0, 0))
 
@@ -422,7 +422,7 @@ class Player():
 			pygame.display.update(r)
 
 
-	def playMusic(self, previous = False):
+	def play_music(self, previous = False):
 		'''
 		Plays the next or previous song. Any playing song will be replaced by the new song.
 
@@ -430,90 +430,90 @@ class Player():
 		'''
 
 		# If no music is allowed, don't do anything
-		if not self.allowMusic:
+		if not self.allow_music:
 			return
 
 		if previous:
-			nextSong = self.playlist.previousSong()
+			next_song = self.playlist.previous_song()
 		else:
-			nextSong = self.playlist.nextSong()
+			next_song = self.playlist.next_song()
 
-		if nextSong is not None:
-			self.debugPrint('Now playing {} with volume {}'.format(nextSong.filename, nextSong.volume))
-			pygame.mixer.music.load(nextSong.filename)
-			pygame.mixer.music.set_volume(nextSong.volume)
+		if next_song is not None:
+			self.debug_print('Now playing {} with volume {}'.format(next_song.filename, next_song.volume))
+			pygame.mixer.music.load(next_song.filename)
+			pygame.mixer.music.set_volume(next_song.volume)
 			if self.paused:
-				self.newSongWhilePause = True
+				self.new_song_while_pause = True
 			else:
 				if len(self.playlist.songs) == 1:
 					pygame.mixer.music.play(-1)
 				else:
 					pygame.mixer.music.play()
-			self.updateTextNowPlaying()
+			self.update_text_now_playing()
 		else:
 			pygame.mixer.music.stop()
-			if not previous and self.activeTheme is not None:
-				self.debugPrint('No music available in theme {}'.format(self.activeTheme.name))
+			if not previous and self.active_theme is not None:
+				self.debug_print('No music available in theme {}'.format(self.active_theme.name))
 
 
-	def playGlobalEffect(self, effectID):
+	def play_global_effect(self, effect_ID):
 		'''
 		Plays a global effect taking care of interrupting other music and sounds if necessary.
 
-		:param effectID: The ID of the effect to be played.
+		:param effect_ID: The ID of the effect to be played.
 		'''
 
-		if self.globalChannel.get_busy():
-			self.debugPrint('Reserved channel is busy! Active key is {}'.format(chr(self.activeGlobalEffect)))
+		if self.global_channel.get_busy():
+			self.debug_print('Reserved channel is busy! Active key is {}'.format(chr(self.active_global_effect)))
 			return
 
-		if self.globalEffects[effectID].interrupting:
-			self.interruptingGlobalEffect = True
+		if self.global_effects[effect_ID].interrupting:
+			self.interrupting_global_effect = True
 			pygame.mixer.music.pause()
-			for name, channel in self.activeChannels:
+			for name, channel in self.active_channels:
 				channel.pause()
 
-		self.activeGlobalEffect = effectID
-		self.globalChannel.play(self.globalEffects[effectID].obj)
+		self.active_global_effect = effect_ID
+		self.global_channel.play(self.global_effects[effect_ID].obj)
 
-		self.debugPrint('Now playing {}'.format(self.globalEffects[effectID].name))
+		self.debug_print('Now playing {}'.format(self.global_effects[effect_ID].name))
 
-		self.updateTextGlobalEffects()
-		self.updateTextNowPlaying()
+		self.update_text_global_effects()
+		self.update_text_now_playing()
 
 
-	def stopGlobalEffect(self, byEndEvent = False):
+	def stop_global_effect(self, by_end_event = False):
 		'''
 		Stops a global effect, if it is still running.
 		Takes care of restarting potentially interrupted music and sounds.
 
-		:param byEndEvent: If True, this function is called, because the global effect stopped.
+		:param by_end_event: If True, this function is called, because the global effect stopped.
 		'''
 
-		if self.activeGlobalEffect is None:
+		if self.active_global_effect is None:
 			return
 
-		self.activeGlobalEffect = None
+		self.active_global_effect = None
 
-		if not byEndEvent:
-			self.globalChannel.stop()
+		if not by_end_event:
+			self.global_channel.stop()
 
 		if not self.paused:
 			pygame.mixer.music.unpause()
 			pygame.mixer.unpause()
 
-		self.debugPrint('Now stopping last global effect.')
+		self.debug_print('Now stopping last global effect.')
 
-		self.interruptingGlobalEffect = False
-		self.updateTextGlobalEffects()
+		self.interrupting_global_effect = False
+		self.update_text_global_effects()
 
 
-	def playSound(self):
+	def play_sound(self):
 		'''
-		Plays a random sound and adds its channel to the activeChannels list.
+		Plays a random sound and adds its channel to the active_channels list.
 		'''
 
-		def findSound(a, x):
+		def find_sound(a, x):
 			'''
 			Find leftmost value greater than x using bisect
 
@@ -528,51 +528,51 @@ class Player():
 			return None
 
 		# If sounds are not allowed, update the now playing panel and do nothing more
-		if not self.allowSounds:
-			self.updateTextNowPlaying()
+		if not self.allow_sounds:
+			self.update_text_now_playing()
 			return
 
-		if not self.paused and not self.activeGlobalEffect and self.activeSounds and pygame.mixer.find_channel() is not None:
+		if not self.paused and not self.active_global_effect and self.active_sounds and pygame.mixer.find_channel() is not None:
 			rand = random()
 			if rand < self.occurrences[-1]:
-				i = findSound(self.occurrences, rand)
-				if i is not None and self.activeSounds[i].filename not in self.blockedSounds:
-					newSound = self.activeSounds[i]
-					self.debugPrint('Now playing sound {} with volume {}'.format(newSound.filename, newSound.volume))
-					self.activeChannels.append((newSound.name, newSound.obj.play()))
-					self.blockedSounds[newSound.filename] = newSound.obj.get_length() + newSound.cooldown
-		self.updateTextNowPlaying()
+				i = find_sound(self.occurrences, rand)
+				if i is not None and self.active_sounds[i].filename not in self.blocked_Sounds:
+					new_sound = self.active_sounds[i]
+					self.debug_print('Now playing sound {} with volume {}'.format(new_sound.filename, new_sound.volume))
+					self.active_channels.append((new_sound.name, new_sound.obj.play()))
+					self.blocked_Sounds[new_sound.filename] = new_sound.obj.get_length() + new_sound.cooldown
+		self.update_text_now_playing()
 
 
-	def activateNewTheme(self, themeID):
+	def activate_new_theme(self, theme_ID):
 		'''
 		Activates a new theme. All sounds of that theme are loaded and their volumes adjusted. A new playlist is initiated with all songs. All running sounds are stopped and new music is played.
 
-		:param themeID: The ID of the theme to activate
+		:param theme_ID: The ID of the theme to activate
 		'''
 
-		self.activeTheme = self.box.get_theme(themeID)
-		self.activeThemeID = themeID
+		self.active_theme = self.box.get_theme(theme_ID)
+		self.active_theme_ID = theme_ID
 
-		self.debugPrint('New theme is {}'.format(self.activeTheme.name))
+		self.debug_print('New theme is {}'.format(self.active_theme.name))
 
 		# Update colors
-		if self.allowCustomColors:
-			self.colors = self.activeTheme.colors
+		if self.allow_custom_colors:
+			self.colors = self.active_theme.colors
 
-		loopedSounds = []
+		looped_Sounds = []
 
 		# Get sounds and load them into pygame
-		self.activeSounds = deepcopy(self.activeTheme.sounds)
-		for i in range(len(self.activeSounds)):
-			self.activeSounds[i].obj = pygame.mixer.Sound(self.activeSounds[i].filename)
-			self.activeSounds[i].obj.set_volume(self.activeSounds[i].volume)
-			if self.activeSounds[i].loop:
-				loopedSounds.append(i)
+		self.active_sounds = deepcopy(self.active_theme.sounds)
+		for i in range(len(self.active_sounds)):
+			self.active_sounds[i].obj = pygame.mixer.Sound(self.active_sounds[i].filename)
+			self.active_sounds[i].obj.set_volume(self.active_sounds[i].volume)
+			if self.active_sounds[i].loop:
+				looped_Sounds.append(i)
 
-		self.playlist = Playlist(self.activeTheme.songs)
+		self.playlist = Playlist(self.active_theme.songs)
 
-		self.occurrences = self.activeTheme.occurrences
+		self.occurrences = self.active_theme.occurrences
 
 		# Push a SONG_END event on the event stack to trigger the start of a new song (causes a delay of one cycle, but that should be fine)
 		pygame.event.post(pygame.event.Event(self.SONG_END))
@@ -580,39 +580,39 @@ class Player():
 		pygame.mixer.stop()	# Stop all playing sounds
 
 		# Start all sounds that shall be looped
-		for i in loopedSounds:
-			newSound = self.activeSounds[i]
-			self.activeChannels.append(('>> ' + newSound.name, newSound.obj.play(loops = -1)))
-			self.blockedSounds[newSound.filename] = 604800 # one week
+		for i in looped_Sounds:
+			new_sound = self.active_sounds[i]
+			self.active_channels.append(('>> ' + new_sound.name, new_sound.obj.play(loops = -1)))
+			self.blocked_Sounds[new_sound.filename] = 604800 # one week
 
-		self.updateTextAll()
+		self.update_text_all()
 
 
-	def deactivateTheme(self):
+	def deactivate_theme(self):
 		'''
 		Deactivates a theme. All sounds of that theme are discarded. The playlist is emptied. All running sounds and music are stopped.
 		'''
 
-		self.debugPrint('Theme {} was deactivated'.format(self.activeTheme.name))
+		self.debug_print('Theme {} was deactivated'.format(self.active_theme.name))
 
-		self.activeTheme = None
-		self.activeThemeID = None
+		self.active_theme = None
+		self.active_theme_ID = None
 
 		# Update colors
-		if self.allowCustomColors:
+		if self.allow_custom_colors:
 			self.colors = self.box.colors
 
-		for name, channel in self.activeChannels:
+		for name, channel in self.active_channels:
 			channel.stop()
 
-		self.activeSounds = []
+		self.active_sounds = []
 		self.occurrences = []
 		self.playlist = Playlist([])
 
 		#pygame.mixer.stop()	# Stop all playing sounds
 		pygame.mixer.music.stop() # Stop all music
 
-		self.updateTextAll()
+		self.update_text_all()
 
 
 	def start(self):
@@ -652,61 +652,61 @@ class Player():
 
 					# The space key was pressed -> (un)pause everything
 					elif event.key == pygame.K_SPACE:
-						self.togglePause()
+						self.toggle_pause()
 
 					# The "->" key was pressed -> next song
 					elif event.key == pygame.K_RIGHT:
-						self.playMusic()
+						self.play_music()
 
 					# The "<-" key was pressed -> previous song
 					elif event.key == pygame.K_LEFT:
-						self.playMusic(previous = True)
+						self.play_music(previous = True)
 
 					# The F1 key was pressed -> (dis)allow Music
 					elif event.key == pygame.K_F1:
-						self.toggleAllowMusic()
+						self.toggle_allow_music()
 
 					# The F2 key was pressed -> (dis)allow Sounds
 					elif event.key == pygame.K_F2:
-						self.toggleAllowSounds()
+						self.toggle_allow_sounds()
 
 					# The F5 key was pressed -> (dis)allow custom colors
 					elif event.key == pygame.K_F5:
-						self.toggleAllowCustomColors()
+						self.toggle_allow_custom_colors()
 
 					# The F10 key was pressed -> do (not) print debug info to stdout
 					elif event.key == pygame.K_F10:
-						self.toggleDebugOutput()
+						self.toggle_debug_output()
 
 					# The key is the key of the active theme -> deactivate theme (become silent)
-					elif event.key == self.activeThemeID:
-						self.deactivateTheme()
+					elif event.key == self.active_theme_ID:
+						self.deactivate_theme()
 
 					# The key is the key of the active global effect -> stop it
-					elif event.key == self.activeGlobalEffect:
-						self.stopGlobalEffect()
+					elif event.key == self.active_global_effect:
+						self.stop_global_effect()
 
 					# The key is one of the theme keys -> activate the theme
-					elif event.key in self.themeIDs:
-						self.activateNewTheme(event.key)
+					elif event.key in self.theme_IDs:
+						self.activate_new_theme(event.key)
 
 					# The key is one of the global keys -> trigger effect
-					elif event.key in self.globalIDs:
-						self.playGlobalEffect(event.key)
+					elif event.key in self.global_IDs:
+						self.play_global_effect(event.key)
 
 				# The last song is finished (or a new theme was loaded) -> start new song, if available
 				if event.type == self.SONG_END:
-					self.playMusic()
+					self.play_music()
 
 				# A global effect is finished
 				if event.type == self.GLOBAL_END:
-					self.stopGlobalEffect(byEndEvent = True)
+					self.stop_global_effect(by_end_event = True)
 
 			# Sound effects can be triggered every tenth cycle (about every second).
 			if self.cycle > 10:
 				self.cycle = 0
-				if self.blockedSounds:
-					for k in self.blockedSounds.keys():
-						self.blockedSounds[k] -= 1
-				self.playSound()
+				if self.blocked_Sounds:
+					for k in self.blocked_Sounds.keys():
+						self.blocked_Sounds[k] -= 1
+				self.play_sound()
 			self.cycle += 1

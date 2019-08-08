@@ -2,13 +2,13 @@ from collections import namedtuple
 
 from pygame import Color
 
-from .containers import GlobalEffect, Song, Sound, Theme
+from containers import Global_Effect, Song, Sound, Theme
 
 
 Colormap = namedtuple('Colormap', ['text', 'bg', 'emph', 'fade'])
 
 
-class RPGmusicbox(object):
+class RPGmusicbox():
 	'''
 	Contains music and sound information for a game evening.
 	Reads infos from an XML file.
@@ -49,11 +49,12 @@ class RPGmusicbox(object):
 
 		# Default colors
 		self.colors = self.update_colors({}, default=True)
+		self.default_colors = self.colors
 
-		# Saves theme keys and connects them to theme object {themeID: Theme(), ...}
+		# Saves theme keys and connects them to theme object {theme_ID: Theme(), ...}
 		self.themes = {}
 
-		# Saves theme keys and connects them to global effect object {globalEffectID: GlobalEffect(), ...}
+		# Saves theme keys and connects them to global effect object {global_Effect_ID: Global_Effect(), ...}
 		self.global_effects = {}
 
 
@@ -68,8 +69,8 @@ class RPGmusicbox(object):
 
 		ret.append('Global effects')
 
-		for e in sorted(self.globalEffects.keys()):
-			ret.append(str(self.globalEffects[e]))
+		for e in sorted(self.global_effects.keys()):
+			ret.append(str(self.global_effects[e]))
 
 		return '\n'.join(ret)
 
@@ -88,9 +89,9 @@ class RPGmusicbox(object):
 				colors[c] = Color(self.name_to_color[c])
 
 		if default:
-			self.colors = Colormap(colors)
+			self.colors = Colormap(**colors)
 		else:
-			return Colormap(colors)
+			return Colormap(**colors)
 
 
 	def add_global_effect(self, kid, filename, key, name, volume, interrupting):
@@ -98,10 +99,10 @@ class RPGmusicbox(object):
 		Adds a global effect.
 		'''
 
-		self._ensureValidID(kid)
-		volume = self._ensureVolume(volume)
+		self._ensure_valid_ID(kid)
+		volume = self._ensure_volume(volume)
 
-		self.global_effects[kid] = GlobalEffect(filename = filename, key = key, name = name, volume = volume, interrupting = interrupting)
+		self.global_effects[kid] = Global_Effect(filename = filename, key = key, name = name, volume = volume, interrupting = interrupting)
 
 
 	def add_theme(self, kid, name, colors):
@@ -119,9 +120,9 @@ class RPGmusicbox(object):
 		Adds a background song to a theme.
 		'''
 
-		volume = self._ensureVolume(volume)
+		volume = self._ensure_volume(volume)
 
-		self.themes[kid].addSong(Song(path, name, volume))
+		self.themes[kid].add_song(Song(path, name, volume))
 
 
 	def add_sound(self, kid, path, name, volume, cooldown, loop):
@@ -129,9 +130,9 @@ class RPGmusicbox(object):
 		Adds a sound effect to a theme.
 		'''
 
-		volume = self._ensureVolume(volume)
+		volume = self._ensure_volume(volume)
 
-		self.themes[kid].addSound(Sound(path, name=name, volume=volume, cooldown=cooldown, loop=loop))
+		self.themes[kid].add_sound(Sound(path, name=name, volume=volume, cooldown=cooldown, loop=loop))
 
 
 	def add_occurrences(self, kid, occurrences):
@@ -142,7 +143,7 @@ class RPGmusicbox(object):
 		self.themes[kid].occurrences = occurrences
 
 
-	def _ensureValidID(self, kid):
+	def _ensure_valid_ID(self, kid):
 		'''
 		Ensures, that a given keyboard key (or rather its ID) is valid for the RPGbox.
 
@@ -158,7 +159,7 @@ class RPGmusicbox(object):
 			raise ValueError('The key {} is already registered!'.format(chr(kid)))
 
 
-	def _ensureVolume(self, v):
+	def _ensure_volume(self, v):
 		'''
 		Ensures that a given volume is within the allowed range.
 
@@ -174,7 +175,7 @@ class RPGmusicbox(object):
 		return v
 
 
-	def ensureBasetime(self, b):
+	def ensure_basetime(self, b):
 		'''
 		Ensures that a given basetime is within the allowed range.
 
@@ -190,7 +191,7 @@ class RPGmusicbox(object):
 		return b
 
 
-	def _ensureOccurrence(self, o):
+	def _ensure_occurrence(self, o):
 		'''
 		Ensures that a given occurrence is within the allowed range.
 
@@ -206,30 +207,30 @@ class RPGmusicbox(object):
 		return o
 
 
-	def getIDs(self):
+	def get_IDs(self):
 		'''
 		:returns: a list of two lists: the keys of all global IDs and the keys of all theme IDs
 		'''
 
-		return list(self.globalEffects.keys()), list(self.themes.keys())
+		return list(self.global_effects.keys()), list(self.themes.keys())
 
 
-	def getGlobalEffects(self):
+	def get_global_effects(self):
 		'''
-		:returns: all global effects (a dict in the form {globalEffectID: GlobalEffectObject, ...})
+		:returns: all global effects (a dict in the form {global_Effect_ID: Global_Effect_Object, ...})
 		'''
 
-		return self.globalEffects
+		return self.global_effects
 
 
-	def getTheme(self, themeID):
+	def get_theme(self, theme_ID):
 		'''
-		:param themeID: The id of the theme to get
+		:param theme_ID: The id of the theme to get
 		:returns: The Theme object of the desired theme
-		:raises KeyError: if the given themeID is no themeID
+		:raises KeyError: if the given theme_ID is no theme_ID
 		'''
 
-		if themeID in self.themes:
-			return self.themes[themeID]
+		if theme_ID in self.themes:
+			return self.themes[theme_ID]
 		else:
-			raise KeyError('The key {} is not registered.'.format(themeID))
+			raise KeyError('The key {} is not registered.'.format(theme_ID))
