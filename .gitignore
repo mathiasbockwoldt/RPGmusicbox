@@ -9,3 +9,5 @@ voegel/
 
 ambient-mixer
 *.pyc
+
+*.egg-info/

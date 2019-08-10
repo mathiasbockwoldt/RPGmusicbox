@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from pygame import Color
 
-from containers import GlobalEffect, Song, Sound, Theme
+from .containers import GlobalEffect, Song, Sound, Theme
 
 
 Colormap = namedtuple('Colormap', ['text', 'bg', 'emph', 'fade'])
@@ -76,7 +76,7 @@ class RPGmusicbox():
 		return '\n'.join(ret)
 
 
-	def update_colors(self, colors, default=False):
+	def update_colors(self, new_colors, default=False):
 		'''
 		Sets a color in the config.
 		'''
@@ -84,8 +84,8 @@ class RPGmusicbox():
 		colors = {}
 
 		for name in self.name_to_color:
-			if name in colors:
-				colors[name] = Color(colors[name])
+			if name in new_colors:
+				colors[name] = Color(new_colors[name])
 			else:
 				colors[name] = Color(self.name_to_color[name])
 

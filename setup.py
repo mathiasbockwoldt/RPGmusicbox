@@ -18,7 +18,9 @@ setup(
 	long_description = long_description,
 	long_description_content_type = 'text/markdown',
 	packages = ['rpgmusicbox'],
-	scripts = ['bin/rpgmusicbox'],
+	entry_points = {
+		'console_scripts': ['rpgmusicbox = rpgmusicbox.cli:cli'],
+	},
 	classifiers = [
 		'Development Status :: 3 - Alpha',
 		'Programming Language :: Python :: 3 :: Only',

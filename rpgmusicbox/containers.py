@@ -29,8 +29,8 @@ class Sound():
 	def __str__(self):
 		''' :returns: A string representation of the sound with all attributes. '''
 
-		return '{} (vol: {}, occ: {:.4f}, cd: {}, loop: {})'.
-			format(self.filename, self.volume, self.occurrence, self.cooldown, self.loop)
+		return ('{} (vol: {}, occ: {:.4f}, cd: {}, loop: {})'.
+			format(self.filename, self.volume, self.occurrence, self.cooldown, self.loop))
 
 
 class Song():

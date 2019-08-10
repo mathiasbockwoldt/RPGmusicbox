@@ -5,8 +5,8 @@ from copy import deepcopy
 
 import pygame
 
-from display import Display
-from playlist import Playlist
+from .display import Display
+from .playlist import Playlist
 
 Field = namedtuple('Field', ['text', 'active'])
 
