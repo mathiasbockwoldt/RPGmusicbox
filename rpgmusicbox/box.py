@@ -8,6 +8,10 @@ from .containers import GlobalEffect, Song, Sound, Theme
 Colormap = namedtuple('Colormap', ['text', 'bg', 'emph', 'fade'])
 
 
+class NoValidRPGboxError(ValueError):
+	''' Custom Exception for use when there is an error with the RPGbox file. '''
+
+
 class RPGmusicbox():
 	'''
 	Contains music and sound information for a game evening.

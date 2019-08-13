@@ -1,61 +1,53 @@
 import os
 import sys
-import xml.etree.ElementTree as ET
+import json
 from glob import glob
 
 from .box import RPGmusicbox, NoValidRPGboxError
 
 
-def read_xml(filename):
+def read_json(filename):
 	'''
-	Reads all information from the given XML file.
+	Reads all information from the given json file.
 
-	:param filename: String with the filename or path of the XML file
-	:returns: An RPGmusicbox object with all information from the XML file
+	:param filename: String with the filename or path of the json file
+	:returns: An RPGmusicbox object with all information from the json file
 	:raises: NoValidRPGboxError
 	'''
 
 	box = RPGmusicbox()
 
 	# Read in the file, parse it and point to root
-	root = ET.parse(filename).getroot()
-
-	# Basic tag checking
-	if root.tag != 'rpgbox':
-		raise NoValidRPGboxError('No valid RPGmusicbox XML file!')
-
+	root = json.load(open(filename))
 
 	# If a config is given, read it. If not, use default values.
 	colors = {}
-	try:
-		config = next(root.iter('config'))
+	if 'config' in root:
+		config = root['config']
 		colors['text'] = config.get('textcolor', default='')
 		colors['bg'] = config.get('bgcolor', default='')
 		colors['emph'] = config.get('emphcolor', default='')
 		colors['fade'] = config.get('fadecolor', default='')
 		box.update_colors(colors, default=True)
-	except StopIteration:
-		pass
 
 
 	# Scan through globals
-	for global_tag in root.iter('globals'):
-		# Get the globals volume. If not available, use default volume.
-		# If outside margins, set to margins.
-		# The globals volume is eventually not saved but directly taken account of
-		# for each sound effect and music
-		globals_volume = int(global_tag.get('volume', default=box.DEFAULT_VOLUME)) / 100
+	if 'globals' in root:
+		for global_root in root['globals']:
+			# Get the globals volume. If not available, use default volume.
+			# The globals volume is eventually not saved but directly taken account of
+			# for each sound effect and music
+			globals_volume = int(global_root.get('volume', default=box.DEFAULT_VOLUME)) / 100
 
-		for effect in global_tag.iter('effect'):
-			_add_global_effect(effect, globals_volume, box)
+			for effect in global_root['effect']:
+				_add_global_effect(effect, globals_volume, box)
 
 
 	# Scan through themes
-	for theme in root.iter('theme'):
-		_add_theme(theme, globals_volume, box)
-
-	# Test, whether there is at least one theme in the whole box
-	if not box.get_ids()[1]:
+	if 'theme' in root:
+		for theme in root['theme']:
+			_add_theme(theme, globals_volume, box)
+	else:
 		raise NoValidRPGboxError('No theme found! There must be at least one theme!')
 
 
@@ -91,7 +83,7 @@ def _interpret_bool(string):
 def _add_global_effect(effect, globals_volume, box):
 	# Get name of the global effect (each global effect must have a name!)
 	try:
-		effect_name = effect.attrib['name']
+		effect_name = effect['name']
 	except KeyError:
 		raise NoValidRPGboxError(
 			'A global effect without name was found. Each global effect must have a name!'
@@ -99,7 +91,7 @@ def _add_global_effect(effect, globals_volume, box):
 
 	# Get the keyboard key of the effect (each global effect must have a unique key!)
 	try:
-		effect_key = effect.attrib['key'][0].lower() # get only first char and make it lowercase.
+		effect_key = effect['key'][0].lower() # get only first char and make it lowercase.
 		effect_id = ord(effect_key)
 	except KeyError:
 		raise NoValidRPGboxError(
@@ -107,9 +99,9 @@ def _add_global_effect(effect, globals_volume, box):
 			format(effect_name)
 		)
 
-	# Get the effect file from the tag attribute
+	# Get the effect file
 	try:
-		effect_file = effect.attrib['file']
+		effect_file = effect['file']
 		if not os.path.isfile(effect_file):
 			effect_file = None
 	except KeyError:
@@ -117,14 +109,14 @@ def _add_global_effect(effect, globals_volume, box):
 	if effect_file is None:
 		raise NoValidRPGboxError(
 			'File {} for global effect {} not found.'.
-			format(effect.attrib['file'], effect_name)
+			format(effect['file'], effect_name)
 		)
 
 	# Get potential volume of the effect. Alter it by the globals volume
 	effect_volume = globals_volume * int(effect.get('volume', default=box.DEFAULT_VOLUME)) / 100
 
 	# Check, whether the effect should interrupt everything else
-	interrupting = ('interrupting' in effect.attrib and _interpret_bool(effect.attrib['interrupting']))
+	interrupting = ('interrupting' in effect and _interpret_bool(effect['interrupting']))
 
 	# Save the global effect
 	box.add_global_effect(
@@ -140,13 +132,13 @@ def _add_global_effect(effect, globals_volume, box):
 def _add_theme(theme, global_volume, box):
 	# Get the theme name. Each theme must have a name!
 	try:
-		theme_name = theme.attrib['name']
+		theme_name = theme['name']
 	except KeyError:
 		raise NoValidRPGboxError('A theme without name was found. Each theme must have a name!')
 
 	# Get the keyboard key of the theme (each theme must have a unique key!)
 	try:
-		theme_key = theme.attrib['key'][0].lower() # get only first char and make it lowercase.
+		theme_key = theme['key'][0].lower() # get only first char and make it lowercase.
 		theme_id = ord(theme_key)
 	except KeyError:
 		raise NoValidRPGboxError(
@@ -166,14 +158,12 @@ def _add_theme(theme, global_volume, box):
 
 	# If a config is given, read it. If not, use default values.
 	colors = {}
-	try:
-		config = next(theme.iter('config'))
+	if 'config' in theme:
+		config = theme['config']
 		colors['text'] = config.get('textcolor', default='')
 		colors['bg'] = config.get('bgcolor', default='')
 		colors['emph'] = config.get('emphcolor', default='')
 		colors['fade'] = config.get('fadecolor', default='')
-	except StopIteration:
-		pass
 
 	# Create the theme
 	box.add_theme(theme_id, theme_name, colors)
@@ -181,21 +171,18 @@ def _add_theme(theme, global_volume, box):
 	# Initiate the occurrences list. First element must be 0
 	occurrences = [0]
 
-	# Scan through all subtags and get data like background songs and sound effects
-	for subtag in theme:
-
-		# <background> tag found
-		if subtag.tag == 'background':
-			# Get the song file(s) from the attribute of the tag (can be a glob)
+	if 'background' in theme:
+		for value in theme['background']:
+			# Get the song file(s) from the theme (can be a glob)
 			try:
-				song_files = glob(subtag.attrib['file'])
+				song_files = glob(value['file'])
 			except KeyError:
 				raise NoValidRPGboxError('No file given in background of {}'.format(theme_name))
 			if not song_files:
-				raise NoValidRPGboxError('File {} not found in {}'.format(subtag.attrib['file'], theme_name))
+				raise NoValidRPGboxError('File {} not found in {}'.format(value['file'], theme_name))
 
 			# Get potential volume of song. Alter it by the theme volume
-			volume = theme_volume * int(subtag.get('volume', default=box.DEFAULT_VOLUME)) / 100
+			volume = theme_volume * int(value.get('volume', default=box.DEFAULT_VOLUME)) / 100
 
 			# Save each song with its volume. If a filename occurs more than once,
 			# basically, the volume is updated
@@ -208,28 +195,28 @@ def _add_theme(theme, global_volume, box):
 					volume=volume,
 				)
 
-		# <effect> tag found
-		elif subtag.tag == 'effect':
-			# Get the sound file(s) from the attribute of the tag (can be a glob)
+	if 'effect' in theme:
+		for value in theme['effect']:
+			# Get the sound file(s) from the effect (can be a glob)
 			try:
-				sound_files = glob(subtag.attrib['file'])
+				sound_files = glob(value['file'])
 			except KeyError:
 				raise NoValidRPGboxError('No file given in effect of {}'.format(theme_name))
 			if not sound_files:
-				raise NoValidRPGboxError('File {} not found in {}'.format(subtag.attrib['file'], theme_name))
+				raise NoValidRPGboxError('File {} not found in {}'.format(value['file'], theme_name))
 
 			# Get relative volume of the sound. Alter it by the theme volume
-			volume = theme_volume * int(subtag.get('volume', default=box.DEFAULT_VOLUME)) / 100
+			volume = theme_volume * int(value.get('volume', default=box.DEFAULT_VOLUME)) / 100
 
 			# Get occurrence of the sound. Alter it by the theme basetime
-			occurrence = int(subtag.get('occurrence', default=box.DEFAULT_OCCURRENCE * basetime))
+			occurrence = int(value.get('occurrence', default=box.DEFAULT_OCCURRENCE * basetime))
 			occurrence = box.ensure_occurrence(occurrence / basetime)
 
 			# Get cooldown of the sound.
-			cooldown = float(subtag.get('cooldown', default=box.DEFAULT_COOLDOWN))
+			cooldown = float(value.get('cooldown', default=box.DEFAULT_COOLDOWN))
 
 			# Check, whether the effect should run indefinitely (i.e. it should loop)
-			loop = ('loop' in subtag.attrib and _interpret_bool(subtag.attrib['loop']))
+			loop = ('loop' in value and _interpret_bool(value['loop']))
 
 			# Save each sound with its volume. If a filename occurs more than once,
 			# basically, the volume and occurrence are updated
@@ -245,13 +232,6 @@ def _add_theme(theme, global_volume, box):
 				)
 				occurrences.append(occurrences[-1] + occurrence)
 
-		# config tag found. That was already analysed, so we just ignore it silently
-		elif subtag.tag == 'config':
-			continue
-
-		# other tag found. We just ignore it.
-		else:
-			print('Unknown Tag {}. Ignoring it.'.format(subtag.tag), file=sys.stderr)
 
 	# Ensure, that all sounds CAN be played.
 	# If the sum of occurrences is higher than one, normalize to one

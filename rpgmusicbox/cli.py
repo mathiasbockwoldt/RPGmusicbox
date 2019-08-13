@@ -10,7 +10,7 @@ def cli():
 	parser = argparse.ArgumentParser(description='Tool to bring music and sound effects to the game table.')
 
 	parser.add_argument('-x', '--xml', help='Path to the XML file with the information')
-	parser.add_argument('-j', '--json', help='Path to the JSON file with the information (Currently not supported!)')
+	parser.add_argument('-j', '--json', help='Path to the JSON file with the information')
 	parser.add_argument('-p', '--path', help='Path to the root of the sound files (Currently not supported!)')
 
 	args = parser.parse_args()
@@ -19,8 +19,8 @@ def cli():
 		parser.print_help()
 		sys.exit()
 
-	if args.xml is None:
-		print('Currently, only XML files are supported.', file=sys.stderr)
+	if args.path:
+		print('Reading a path directly is not supported, yet.', file=sys.stderr)
 		parser.print_help()
 		sys.exit()
 
@@ -48,9 +48,10 @@ def cli():
 		from .xml_reader import read_xml
 		box = read_xml(filename)
 	elif args.json:
-		pass
+		from .json_reader import read_json
+		box = read_json(filename)
 	elif args.path:
-		pass
+		sys.exit()
 
 	player = Player(box)
 	player.start()
